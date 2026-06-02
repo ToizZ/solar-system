@@ -195,7 +195,11 @@ nav::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;ba
     </div>
     <span class="zoom-display" id="zoom-info">×1.0</span>
   </div>
-  <div id="view-note" class="view-note">点击天体查看详情 · 滚轮缩放 · 左键平移 · 右键倾角</div>
+  <div id="view-note" class="view-note">点击天体查看详情 · 右键倾角 · 右下拖动条缩放</div>
+  <div class="vertical-controls" id="main-zoom-v" style="pointer-events:auto">
+    <div class="v-track" id="mz-vtrack"><div class="v-track-fill" id="mz-vfill" style="height:50%"></div><div class="v-thumb" id="mz-vthumb" style="bottom:50%"></div></div>
+    <div class="v-label">缩放</div>
+  </div>
   <div id="page-switcher">
     <button class="nav-btn active" data-page="compare" onclick="switchPage('compare')">📏 大小</button>
     <div class="sw-sep"></div>
@@ -298,16 +302,13 @@ class CameraView{
   }
   bindCamera(onClickBody){
     window.addEventListener('resize',()=>{this._up=false;this.resize();});
-    this.canvas.addEventListener('wheel',e=>{e.preventDefault();this._zoom(e.deltaY>0?-1:1,e.clientX,e.clientY);},{passive:false});
-    this.canvas.addEventListener('contextmenu',e=>{e.preventDefault();});
+        this.canvas.addEventListener('contextmenu',e=>{e.preventDefault();});
     this.canvas.addEventListener('mousedown',e=>{
       if(this.hovered&&e.button===0){this._clickOnHover=true;return;}
       if(e.button===2){this._rotating=true;this._rotStartX=e.clientX;this._rotStartY=e.clientY;this._rotLastX=e.clientX;this._rotLastY=e.clientY;return;}
-      this._drag=true;this._dsx=e.clientX;this._dsy=e.clientY;this._lpx=this.panX;this._lpy=this.panY;
     });
     window.addEventListener('mousemove',e=>{
       if(this._rotating){const dx=e.clientX-this._rotLastX;const dy=e.clientY-this._rotLastY;this._rotLastX=e.clientX;this._rotLastY=e.clientY;if(Math.abs(dx)>1||Math.abs(dy)>1)this._onRotate(dx,dy);this._up=true;return;}
-      if(this._drag){this.panX=this._lpx+(e.clientX-this._dsx);this.panY=this._lpy+(e.clientY-this._dsy);this._up=true;return;}
       const r=this.canvas.getBoundingClientRect();
       this._onHover((e.clientX-r.left)*(this.W/r.width),(e.clientY-r.top)*(this.H/r.height),e.clientX,e.clientY);
     });
@@ -316,12 +317,7 @@ class CameraView{
       this._drag=false;this._rotating=false;this._clickOnHover=false;
     });
     this.canvas.addEventListener('mouseleave',()=>{this._drag=false;this._rotating=false;this.hovered=null;hideTip();});
-    let lt=0;
-    this.canvas.addEventListener('touchstart',e=>{
-      if(e.touches.length===1){this._drag=true;this._dsx=e.touches[0].clientX;this._dsy=e.touches[0].clientY;this._lpx=this.panX;this._lpy=this.panY;}
-      else if(e.touches.length===2){lt=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);}
-    },{passive:true});
-    this.canvas.addEventListener('touchmove',e=>{e.preventDefault();if(e.touches.length===2){const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);this._zoomRaw(d/lt,(e.touches[0].clientX+e.touches[1].clientX)/2,(e.touches[0].clientY+e.touches[1].clientY)/2);lt=d;}},{passive:false});
+    
   }
   _zoom(dir,cx,cy){this._zoomRaw(1+dir*0.12,cx,cy);}
   _zoomRaw(f,cx,cy){
@@ -335,6 +331,9 @@ class CameraView{
   _ss(){return 1;}_onHover(mx,my,cx,cy){}_onRotate(dx,dy){}_uzl(){}
   start(){if(this.running)return;this.running=true;const loop=n=>{if(!this.running)return;this._ds();this.rid=requestAnimationFrame(loop);};this.rid=requestAnimationFrame(loop);}
   stop(){this.running=false;if(this.rid){cancelAnimationFrame(this.rid);this.rid=null;}}
+  setZoomPercent(pct){
+    const z=Math.pow(4,pct/100)*0.25;this.zoom=z;this._up=true;this._uzl();
+  }
   resetCamera(){this._up=false;this.zoom=1;this.panX=0;this.panY=0;this._uzl();}
 }
 
@@ -345,7 +344,7 @@ class SolarView extends CameraView{
     this.speed=1;this.time=0;this.viewTilt=0;this._satTime=0;
     this.bodies=PLANETS.map(p=>({...p}));
     this.planets=PLANETS.filter(p=>p.distanceAU>0).map(p=>({...p,angle:Math.random()*Math.PI*2,moons:p.moons.map(m=>({...m,angle:Math.random()*Math.PI*2}))}));
-    this._animProgress=-1;this._animFrom=[];this._animTo=[];
+    this._animProgress=-1;this._animFrom=[];this._animTo=[];this._dashOffset=0;
     this._flyProgress=-1;this._flyFrom=[];this._flyTo=[];this._sscale=1;
     this.resize();this.bindCamera((p)=>openDetail(p.key));
   }
@@ -353,8 +352,8 @@ class SolarView extends CameraView{
   resize(){super.resize();const s=this._calcScales(this.W,this.H);this.sizeBase=s.sizeBase;this._distScale=s.distScale;if(!this._up){this.zoom=1;this.viewTilt=0;if(this.mode==='arrange'){this.panX=-this.cx+30;this.panY=0;}else{this.panX=0;this.panY=0;}}this._sscale=this._distScale;}
   _ss(){return this._sscale;}
   _br(km){return Math.max(km/ER*this.sizeBase*this.zoom,0.5);}
-  _obr(p){return Math.max(p.radiusKm/ER*this.sizeBase*this.zoom,0.4);}
-  _sr(){return SR*this.sizeBase*this.zoom;}
+  _obr(p){return Math.max(p.radiusKm/ER*this.sizeBase*this.zoom,0.25);}
+  _sr(){const raw=SR*this.sizeBase*this.zoom;const mercOrbit=0.387*this._distScale*this.zoom;return Math.min(raw,mercOrbit*0.2);}
   _obp(p){const px=this._distScale*this.zoom;const a=p.distanceAU*px,e=p.ecc,b=a*Math.sqrt(1-e*e),tf=1-this.viewTilt/(Math.PI/2),cA=Math.cos(p.angle),sA=Math.sin(p.angle);return{x:this.cx+this.panX+a*(cA-e),y:this.cy+this.panY+b*sA*tf};}
   _eqLayout(){const count=this.bodies.length;const avail=this.W-60;const totalDiamER=PLANETS.reduce((s,p)=>s+p.radiusKm/ER*2,0);const maxBase=(avail-(count-1)*8)/totalDiamER;const eqS=Math.min(this.W/250,Math.max(0.5,maxBase))*0.7;const items=this.bodies.map(b=>({p:b,r:Math.max(b.radiusKm/ER*eqS*this.zoom,0.8)}));const bodiesW=items.reduce((s,it)=>s+it.r*2,0);const gap=Math.max(8,(avail-bodiesW)/(count-1));const totalW=bodiesW+(count-1)*gap;const baseX=this.cx+this.panX-totalW/2;let cx=baseX;const sy=this.cy+this.panY;for(const it of items){it.x=cx+it.r;cx+=it.r*2+gap;it.y=sy;}return items;}
   _realLayout(){const sx=this.cx+this.panX,sy=this.cy+this.panY,p=this._distScale*this.zoom;return this.bodies.map(b=>({p:b,x:sx+b.distanceAU*p,y:sy,r:this._br(b.radiusKm)}));}
@@ -393,14 +392,14 @@ class SolarView extends CameraView{
     const targetMode=this._flyProgress>=0?this._flyTargetMode:(this._animProgress>=0?this._animTargetMode:this.mode);
     if(p.distanceAU===0){
       // Sun glow (all modes)
-      const g=ctx.createRadialGradient(x,y,r*0.5,x,y,r*3);
-      g.addColorStop(0,'rgba(215,171,97,0.08)');g.addColorStop(0.5,'rgba(215,171,97,0.03)');g.addColorStop(1,'rgba(215,171,97,0)');
+      const g=ctx.createRadialGradient(x,y,r*0.3,x,y,r*1.5);
+      g.addColorStop(0,'rgba(215,171,97,0.05)');g.addColorStop(0.5,'rgba(215,171,97,0.02)');g.addColorStop(1,'rgba(215,171,97,0)');
       ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r*3,0,Math.PI*2);ctx.fill();
     }
-    if(p.distanceAU===0&&targetMode!=='compare'){ctx.fillStyle='#d7ab61';ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
+    if(p.distanceAU===0&&targetMode==='orbit'){ctx.fillStyle='rgba(215,171,97,0.5)';ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}else if(p.distanceAU===0&&targetMode==='arrange'){ctx.fillStyle='#d7ab61';ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
     ctx.strokeStyle=p.color;ctx.lineWidth=isH?Math.min(this._lw()+0.5,3):this._lw();ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.stroke();ctx.shadowBlur=0;
     // Inner dashed ring only in compare mode (hollow sun)
-    if(p.distanceAU===0&&targetMode==='compare'){ctx.strokeStyle='rgba(224,98,54,0.4)';ctx.lineWidth=1.5;ctx.setLineDash([4,6]);ctx.beginPath();ctx.arc(x,y,r*0.85,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);}
+    if(p.distanceAU===0&&targetMode==='compare'){this._dashOffset-=0.3;ctx.strokeStyle='rgba(224,98,54,0.4)';ctx.lineWidth=1.5;ctx.setLineDash([4,6]);ctx.lineDashOffset=this._dashOffset;ctx.beginPath();ctx.arc(x,y,r*0.85,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);}
     // Rings (gas giants)
     if(p.name==='土星'){ctx.save();ctx.translate(x,y);ctx.rotate(0.4);ctx.strokeStyle='rgba(224,208,160,0.3)';ctx.lineWidth=1;ctx.beginPath();ctx.ellipse(0,0,r*2.2,r*0.45,0,0,Math.PI*2);ctx.stroke();ctx.restore();}
     if(p.name==='木星'){ctx.save();ctx.translate(x,y);ctx.rotate(0.2);ctx.strokeStyle='rgba(200,180,150,0.08)';ctx.lineWidth=0.5;ctx.beginPath();ctx.ellipse(0,0,r*1.8,r*0.15,0,0,Math.PI*2);ctx.stroke();ctx.restore();}
@@ -418,21 +417,32 @@ const view=new SolarView();
 const sp=[0.25,0.5,1,2,5,10,50,200];let si=2;
 function adjSpeed(d){si=Math.max(0,Math.min(sp.length-1,si+d));view.speed=sp[si];document.getElementById('speed-display').textContent=sp[si]+'×';}
 function switchPage(p){
-  if(p===view.mode)return;
+  if(p===view.mode){
+    view._flyFrom=view._layout();
+    view.resetCamera();view._up=true;
+    view._flyTo=view._layout();
+    view._flyProgress=0;view._flyTargetMode=view.mode;
+    view._onFlyDone=()=>{};
+    const f=document.getElementById('mz-vfill'),t=document.getElementById('mz-vthumb');
+    if(f){f.style.transition='height 0.6s cubic-bezier(0.7,0,0.3,1)';t.style.transition='bottom 0.6s cubic-bezier(0.7,0,0.3,1)';f.style.height='50%';t.style.bottom='50%';}
+    return;}
   hideTip();
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===p));
   view._flyFrom=view._layout();
   const prevMode=view.mode;view.mode=p;view._up=false;
-  if(p==='orbit'){view.panX=0;view.panY=0;view.zoom=1;
+  view.zoom=1;view.viewTilt=0;
+    const f=document.getElementById('mz-vfill'),t=document.getElementById('mz-vthumb');
+    if(f){f.style.transition='none';t.style.transition='none';f.style.height='50%';t.style.bottom='50%';}
+    if(p==='orbit'){view.panX=0;view.panY=0;
     document.getElementById('speed-group').style.display='flex';document.getElementById('sep1').style.display='';document.getElementById('tilt-group').style.display='flex';document.getElementById('sep2').style.display='';
-    document.getElementById('view-note').innerHTML='点击天体查看详情 · 滚轮缩放 · 左键平移 · 右键倾角';
-  }else{
+    document.getElementById('view-note').innerHTML='点击天体查看详情 · 拖拽底部滑块缩放 · 右键倾角';
+    }else{
     document.getElementById('speed-group').style.display='none';document.getElementById('sep1').style.display='none';document.getElementById('tilt-group').style.display='none';document.getElementById('sep2').style.display='none';
-    document.getElementById('view-note').innerHTML='点击天体查看详情 · 滚轮缩放 · 左键平移';
+    document.getElementById('view-note').innerHTML='点击天体查看详情 · 拖拽底部滑块缩放';
     if(p==='arrange'){view.panX=-view.cx+30;view.panY=0;}
     else{view.panX=0;view.panY=0;}
-  }
-  view.resize();view._flyTo=view._layout();view.mode=prevMode;view._flyProgress=0;
+    }
+    view.resize();view._flyTo=view._layout();view.mode=prevMode;view._flyProgress=0;
   view._flyTargetMode=p;view._onFlyDone=()=>{view.mode=p;};
 }
 
@@ -501,7 +511,7 @@ function openDetail(key){
     '<div class="zoom-slider-container" id="zoom-slider">'+
     '<div class="zoom-label">\u7126\u8ddd\u63a7\u5236</div>'+
     '<div class="zoom-track" id="z-track"><div class="zoom-track-fill" id="z-fill" style="width:100%"></div><div class="zoom-thumb" id="z-thumb" style="left:100%"></div></div>'+
-    '<div class="zoom-ticks"><span class="zoom-tick">25%</span><span class="zoom-tick">50%</span><span class="zoom-tick">75%</span><span class="zoom-tick">100%</span></div></div>';
+    '<div class="zoom-ticks"><span class="zoom-tick">10%</span><span class="zoom-tick">40%</span><span class="zoom-tick">70%</span><span class="zoom-tick">100%</span></div></div>';
   // Back navigation
   document.getElementById('monitor-back').addEventListener('click',()=>closeDetail());
   // Terminal typewriter animation
@@ -514,11 +524,11 @@ function openDetail(key){
     const track=uiRoot.querySelector('#z-track'),fill=uiRoot.querySelector('#z-fill'),thumb=uiRoot.querySelector('#z-thumb');
     let zpct=100;
     function setZPct(v){
-      zpct=Math.max(25,Math.min(100,v));const frac=(zpct-25)/75;
+      zpct=Math.max(10,Math.min(100,v));const frac=(zpct-10)/90;
       fill.style.width=(frac*100)+'%';thumb.style.left=(frac*100)+'%';
       const zd=uiRoot.querySelector('#zoom-text-display');if(zd)zd.textContent=Math.round(zpct)+'%';
       const tz=uiRoot.querySelector('#tl-zoom');if(tz)tz.textContent=Math.round(zpct)+'%';
-      if(window._detailCamera){const bdMap={sun:28,mercury:17,venus:18,earth:19,mars:19,jupiter:26,saturn:48,uranus:22,neptune:22};const bd=bdMap[key]||20;const ta=20*Math.PI/180;const nd=bd+(100-zpct)*0.2;window._detailCamera.position.set(0,nd*Math.sin(ta),nd*Math.cos(ta));window._detailCamera.lookAt(0,0,0);}
+      if(window._detailCamera){const bdMap={sun:28,mercury:17,venus:18,earth:19,mars:19,jupiter:26,saturn:48,uranus:22,neptune:22};const bd=bdMap[key]||20;const ta=20*Math.PI/180;const nd=bd+(100-zpct)*0.5;window._detailCamera.position.set(0,nd*Math.sin(ta),nd*Math.cos(ta));window._detailCamera.lookAt(0,0,0);}
     }
     let dragging=false;
     track.addEventListener('mousedown',function(e){dragging=true;
@@ -712,7 +722,25 @@ document.getElementById('speed-group').style.display='none';
 document.getElementById('sep1').style.display='none';
 document.getElementById('tilt-group').style.display='none';
 document.getElementById('sep2').style.display='none';
-document.getElementById('view-note').innerHTML='点击天体查看详情 · 滚轮缩放 · 左键平移';
+document.getElementById('view-note').innerHTML='点击天体查看详情 · 拖拽底部滑块缩放';
+
+// Vertical zoom slider for main view (bottom-right)
+(function(){
+  const track=document.getElementById('mz-vtrack'),fill=document.getElementById('mz-vfill'),thumb=document.getElementById('mz-vthumb');
+  let zpct=50,zdragging=false;
+  function setZ(v){
+    zpct=Math.max(0,Math.min(100,v));const frac=zpct/100;
+    fill.style.height=(frac*100)+'%';thumb.style.bottom=(frac*100)+'%';
+    view.zoom=Math.pow(2,(zpct-50)/15);view._up=true;view._uzl();
+  }
+  function fromY(eY){const r=track.getBoundingClientRect();return (1-(eY-r.top)/r.height)*100;}
+  track.addEventListener('mousedown',function(e){zdragging=true;setZ(fromY(e.clientY));});
+  window.addEventListener('mousemove',function(e){if(!zdragging)return;setZ(fromY(e.clientY));});
+  window.addEventListener('mouseup',function(){zdragging=false;});
+  track.addEventListener('touchstart',function(e){zdragging=true;setZ(fromY(e.touches[0].clientY));});
+  window.addEventListener('touchmove',function(e){if(!zdragging)return;setZ(fromY(e.touches[0].clientY));});
+  window.addEventListener('touchend',function(){zdragging=false;});
+})();
 
 // Page load intro
 requestAnimationFrame(()=>{cur.classList.remove('start-covered');cur.classList.add('curtain-intro');});
