@@ -529,7 +529,7 @@ function openDetail(key){
       fill.style.width=(frac*100)+'%';thumb.style.left=(frac*100)+'%';
       const zd=uiRoot.querySelector('#zoom-text-display');if(zd)zd.textContent=Math.round(zpct)+'%';
       const tz=uiRoot.querySelector('#tl-zoom');if(tz)tz.textContent=Math.round(zpct)+'%';
-      if(window._detailCamera){const bdMap={sun:28,mercury:17,venus:18,earth:19,mars:19,jupiter:26,saturn:48,uranus:22,neptune:22};const bd=bdMap[key]||20;const ta=20*Math.PI/180;const nd=bd+(100-zpct)*0.5;window._detailCamera.position.set(0,nd*Math.sin(ta),nd*Math.cos(ta));window._detailCamera.lookAt(0,0,0);}
+      if(window._detailCamera){const bdMap={sun:15,mercury:17,venus:18,earth:19,mars:19,jupiter:26,saturn:48,uranus:22,neptune:22};const bd=bdMap[key]||20;const ta=20*Math.PI/180;const nd=bd+(100-zpct)*0.5;window._detailCamera.position.set(0,nd*Math.sin(ta),nd*Math.cos(ta));window._detailCamera.lookAt(0,0,0);}
     }
     let dragging=false;
     track.addEventListener('mousedown',function(e){dragging=true;
@@ -585,7 +585,7 @@ function initThreeDetail(p,key){
   // Tilted camera for orbit visibility (~20deg down angle)
   // Distances tuned per planet for comfortable viewing:
   // Saturn needs wide view for rings, gas giants need room for moons
-  const cdMap={sun:53,mercury:42,venus:43,earth:44,mars:44,jupiter:51,saturn:73,uranus:47,neptune:47};
+  const cdMap={sun:40,mercury:42,venus:43,earth:44,mars:44,jupiter:51,saturn:73,uranus:47,neptune:47};
   const camDist=cdMap[key]||20;
   const camTilt=20*Math.PI/180;
   camera.position.set(0,camDist*Math.sin(camTilt),camDist*Math.cos(camTilt));
@@ -687,7 +687,7 @@ function initThreeDetail(p,key){
   const rotGroup=new THREE.Group();tiltGroup.add(rotGroup);
   window._detailGroup=group;window._detailRotGroup=rotGroup;window._detailTiltGroup=tiltGroup;
   const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(positions,3));geo.setAttribute('color',new THREE.BufferAttribute(colors,3));
-  const mat=new THREE.PointsMaterial({size:0.08,vertexColors:true,transparent:true,opacity:0.98,blending:THREE.AdditiveBlending,sizeAttenuation:true,depthWrite:false});
+  const isGasGiant=isJupiter||isSaturn||isUranus||isNeptune;const mat=new THREE.PointsMaterial({size:0.08,vertexColors:true,transparent:true,opacity:isGasGiant?0.95:0.98,blending:isGasGiant?THREE.NormalBlending:THREE.AdditiveBlending,sizeAttenuation:true,depthWrite:false});
   rotGroup.add(new THREE.Points(geo,mat));
   const atmCount=3000;const ap=new Float32Array(atmCount*3);
   for(let i=0;i<atmCount;i++){const rd=radius+Math.random()*1.5;const t2=Math.random()*Math.PI*2;const p2=Math.acos(2*Math.random()-1);ap[i*3]=rd*Math.sin(p2)*Math.cos(t2);ap[i*3+1]=rd*Math.sin(p2)*Math.sin(t2);ap[i*3+2]=rd*Math.cos(p2);}
