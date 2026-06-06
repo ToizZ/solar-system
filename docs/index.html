@@ -55,7 +55,7 @@ nav::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;ba
 #tooltip .tt-divider{height:0;border-top:1px solid var(--line-color);margin:8px 0 6px}
 #tooltip .tt-row{color:var(--text-dim);font-size:10px;margin-top:3px;display:flex;justify-content:space-between;gap:12px}
 #tooltip .tt-row span{color:var(--text-white);font-weight:500}
-#planet-overlay{position:fixed;inset:0;z-index:50;display:none;background:var(--bg-navy)}
+#planet-overlay{position:fixed;inset:0;z-index:50;display:none;background:var(--bg-navy);pointer-events:auto}
 #planet-overlay.active{display:block}
 .right-dock{position:absolute;top:24px;right:24px;display:flex;flex-direction:column;align-items:flex-end;z-index:10;pointer-events:auto}
 .header-block{border-right:3px solid var(--const-orange);padding-right:20px;margin-bottom:30px;display:flex;flex-direction:column;align-items:center;text-align:center}
@@ -166,7 +166,7 @@ nav::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;ba
 
 <div id="tooltip">
   <div class="tt-name"></div><div class="tt-en"></div>
-  <div class="tt-divider"></div><div class="tt-row"></div><div class="tt-row"></div>
+  <div class="tt-divider"></div><div class="tt-row"></div><div class="tt-row"></div><div class="tt-row"></div>
 </div>
 
 <div id="main-view" class="page active">
@@ -261,15 +261,15 @@ const PLANET_DETAILS = {
 };
 
 const tip=document.getElementById('tooltip');
-const tN=tip.querySelector('.tt-name'),tE=tip.querySelector('.tt-en'),t1=tip.querySelector('.tt-row:nth-child(4)'),t2=tip.querySelector('.tt-row:nth-child(5)');
+const tN=tip.querySelector('.tt-name'),tE=tip.querySelector('.tt-en'),t1=tip.querySelector('.tt-row:nth-child(4)'),t2=tip.querySelector('.tt-row:nth-child(5)'),t3=tip.querySelector('.tt-row:nth-child(6)');
 function showTip(cx,cy,p){
   const isSun=p.distanceAU===0;
   tN.textContent=p.name;tN.style.color=p.color;
   tE.style.display='block';tE.textContent='['+p.nameEn+']';tE.style.color='rgba(255,255,255,0.25)';
-  t1.style.display='flex';t2.style.display='flex';
+  t1.style.display='flex';t2.style.display='flex';t3.style.display='flex';
   t1.innerHTML=`直径<span>${(p.radiusKm*2).toLocaleString()} km</span>`;
   t2.innerHTML=isSun?`质量<span>×333,000 地球</span>`:`比例<span>×${(p.radiusKm/ER).toFixed(2)} 地球</span>`;
-  if(p.moons)t1.innerHTML+=`<br>卫星<span>${p.moons.length>0?p.moons.length+' 颗':''}</span>`;
+  if(p.moons&&p.moons.length>0){t3.innerHTML=`卫星<span>${p.moons.length} 颗</span>`;}else{t3.style.display='none';}
   tip.style.display='block';
   let l=cx+16,t=cy+16;const tw=tip.offsetWidth,th=tip.offsetHeight;
   if(l+tw>innerWidth-10)l=cx-tw-16;if(t+th>innerHeight-10)t=cy-th-16;
@@ -310,6 +310,7 @@ class CameraView{
     window.addEventListener('mousemove',e=>{
       if(this._rotating){const dx=e.clientX-this._rotLastX;const dy=e.clientY-this._rotLastY;this._rotLastX=e.clientX;this._rotLastY=e.clientY;if(Math.abs(dx)>1||Math.abs(dy)>1)this._onRotate(dx,dy);this._up=true;return;}
       const r=this.canvas.getBoundingClientRect();
+      if(document.getElementById('planet-overlay').style.display==='block'){hideTip();return;}
       this._onHover((e.clientX-r.left)*(this.W/r.width),(e.clientY-r.top)*(this.H/r.height),e.clientX,e.clientY);
     });
     window.addEventListener('mouseup',e=>{
@@ -454,7 +455,7 @@ function buildMonitor(active){
   return['neptune','uranus','saturn','jupiter','mars','earth','venus','mercury'].map(n=>{const s=sz[n];const ao=n===active?' orbit-active':'';return`<div class="orbit-path o-${n}${ao}" style="width:${s.w}px;height:${s.w}px;animation-duration:${s.d}s"></div><div class="planet-container c-${n}" style="animation-duration:${s.d}s"><div class="planet-marker p-${n}" style="width:${s.m}px;height:${s.m}px;left:calc(50% - ${s.w/2}px)">${n===active?buildReticle(s.m>=8):''}</div></div>`;}).join('');
 }
 function openDetail(key){
-  const p=PLANETS.find(x=>x.key===key);if(!p)return;const d=PLANET_DETAILS[key];if(!d)return;
+  hideTip();const p=PLANETS.find(x=>x.key===key);if(!p)return;const d=PLANET_DETAILS[key];if(!d)return;
   // Render topo background
   function renderTopoBg(){
     const c=document.createElement('canvas');c.id='topo-detail';
@@ -484,7 +485,7 @@ function openDetail(key){
   uiRoot.innerHTML='<div class="brand-stripe bs-top"></div><div class="brand-stripe bs-right"></div><div class="brand-stripe bs-bottom"></div><div class="brand-stripe bs-left"></div>'+
     '<div class="telemetry-display" id="telemetry">'+
     '<div class="telemetry-row"><span class="tl-key">\u65b9\u4f4d\u89d2</span><span class="tl-val" id="tl-azimuth">000.0\u00b0</span></div>'+
-    '<div class="telemetry-row"><span class="tl-key">\u7126\u8ddd</span><span class="tl-val" id="tl-zoom">100%</span></div>'+
+    '<div class="telemetry-row"><span class="tl-key">\u7126\u8ddd</span><span class="tl-val" id="tl-zoom">50%</span></div>'+
     '<div class="telemetry-row"><span class="tl-key">\u5e27\u7387</span><span class="tl-val" id="tl-fps">60</span></div>'+
     '<div class="telemetry-row"><span class="tl-key">\u5386\u5143</span><span class="tl-val dim">J2000.0</span></div></div>'+
     '<div class="right-dock">'+
@@ -498,7 +499,7 @@ function openDetail(key){
     '<div class="terminal-line" style="opacity:1"><span class="key">\u8d28\u91cf</span><span class="val">'+(key==='sun'?'1.9885 \u00d7 10<sup>30</sup> kg':(p.radiusKm/ER).toFixed(2)+' \u5730\u7403')+'</span></div>'+
     '<div class="terminal-line" style="opacity:1"><span class="key">\u536b\u661f</span><span class="val">'+moonCount+' ('+moonNames+')</span></div>'+
     '<hr class="terminal-sep">'+termRows+
-    '<hr class="terminal-sep"><div class="terminal-line" style="opacity:1"><span class="key">\u7126\u8ddd</span><span class="val warn" id="zoom-text-display">100%</span></div>'+
+    '<hr class="terminal-sep"><div class="terminal-line" style="opacity:1"><span class="key">\u7126\u8ddd</span><span class="val warn" id="zoom-text-display">50%</span></div>'+
     '</div></div>'+
     '<div class="system-monitor-container" id="monitor-back">'+
     '<div class="system-monitor-body detail-mode">'+
@@ -510,7 +511,7 @@ function openDetail(key){
     '<div class="monitor-click-hint">\u2190 \u8fd4\u56de\u7cfb\u7edf\u603b\u89c8</div></div>'+
     '<div class="zoom-slider-container" id="zoom-slider">'+
     '<div class="zoom-label">\u7126\u8ddd\u63a7\u5236</div>'+
-    '<div class="zoom-track" id="z-track"><div class="zoom-track-fill" id="z-fill" style="width:100%"></div><div class="zoom-thumb" id="z-thumb" style="left:100%"></div></div>'+
+    '<div class="zoom-track" id="z-track"><div class="zoom-track-fill" id="z-fill" style="width:50%"></div><div class="zoom-thumb" id="z-thumb" style="left:50%"></div></div>'+
     '<div class="zoom-ticks"><span class="zoom-tick">10%</span><span class="zoom-tick">40%</span><span class="zoom-tick">70%</span><span class="zoom-tick">100%</span></div></div>';
   // Back navigation
   document.getElementById('monitor-back').addEventListener('click',()=>closeDetail());
@@ -522,7 +523,7 @@ function openDetail(key){
   // Horizontal zoom slider
   (function(){
     const track=uiRoot.querySelector('#z-track'),fill=uiRoot.querySelector('#z-fill'),thumb=uiRoot.querySelector('#z-thumb');
-    let zpct=100;
+    let zpct=50;
     function setZPct(v){
       zpct=Math.max(10,Math.min(100,v));const frac=(zpct-10)/90;
       fill.style.width=(frac*100)+'%';thumb.style.left=(frac*100)+'%';
@@ -584,7 +585,7 @@ function initThreeDetail(p,key){
   // Tilted camera for orbit visibility (~20deg down angle)
   // Distances tuned per planet for comfortable viewing:
   // Saturn needs wide view for rings, gas giants need room for moons
-  const cdMap={sun:28,mercury:17,venus:18,earth:19,mars:19,jupiter:26,saturn:48,uranus:22,neptune:22};
+  const cdMap={sun:53,mercury:42,venus:43,earth:44,mars:44,jupiter:51,saturn:73,uranus:47,neptune:47};
   const camDist=cdMap[key]||20;
   const camTilt=20*Math.PI/180;
   camera.position.set(0,camDist*Math.sin(camTilt),camDist*Math.cos(camTilt));
@@ -669,13 +670,13 @@ function initThreeDetail(p,key){
     const u=Math.atan2(z,x)/(Math.PI*2)+0.5;const v=Math.asin(y/radius)/Math.PI+0.5;
     const tx2=Math.floor(u*texSize)%texSize,ty2=Math.floor(v*texSize)%texSize;const elev=texData[ty2*texSize+tx2];
     if(isEarth){const isOcean=elev<0.05||(elev<0.12&&Math.abs(v-0.5)<0.15);const c=isOcean?new THREE.Color('#0a2a6a').lerp(new THREE.Color('#1a4a8a'),Math.random()*0.3):(elev>0.25?new THREE.Color('#2d7a1e').lerp(new THREE.Color('#6a5a2a'),Math.min(1,elev*1.5)).lerp(new THREE.Color('#3a8a2a'),0.3+Math.random()*0.2):new THREE.Color('#3a8a2a').lerp(new THREE.Color('#5a9a3a'),Math.random()*0.3));colors[i*3]=c.r;colors[i*3+1]=c.g;colors[i*3+2]=c.b;}
-    else if(isJupiter){const lat=Math.abs(v-0.5)*2;const band=Math.floor(lat*18)%10;const turb=_sn.noise2D(u*25,v*25)*0.3;const shades=[0xcc6630,0xdda050,0xbb5520,0xeebb70,0xcc8840,0xf0cc80,0xcc7740,0xdda058,0xc89848,0xe0b068];const c=new THREE.Color(shades[band]);c.multiplyScalar(0.75+0.4*(0.5+Math.abs(turb)));colors[i*3]=c.r;colors[i*3+1]=c.g;colors[i*3+2]=c.b;}
-    else if(isMars){const lat_abs=Math.abs(v-0.5)*2;const isIce=lat_abs>0.86;let c2;if(isIce){c2=new THREE.Color('#eeeeff').lerp(new THREE.Color('#ffffff'),Math.random()*0.4);c2.multiplyScalar(0.7+Math.random()*0.3);}else{c2=elev>0.2?new THREE.Color('#dd4420').lerp(new THREE.Color('#ff6630'),Math.random()*0.3):new THREE.Color('#5a2208').lerp(new THREE.Color('#7a3010'),Math.random()*0.4);c2.multiplyScalar(0.8+Math.random()*0.3);}colors[i*3]=c2.r;colors[i*3+1]=c2.g;colors[i*3+2]=c2.b;}
-    else if(isVenus){const c=new THREE.Color('#eedd99').lerp(new THREE.Color('#ddaa55'),elev*0.3+0.5);c.multiplyScalar(0.8+Math.random()*0.3);colors[i*3]=c.r;colors[i*3+1]=c.g;colors[i*3+2]=c.b;}
-    else if(isMercury){const isCrater=Math.random()<0.12;const c=isCrater?new THREE.Color('#1a1a1a').lerp(new THREE.Color('#333333'),Math.random()):new THREE.Color('#cccccc').lerp(new THREE.Color('#666666'),elev*0.5+0.5);colors[i*3]=c.r;colors[i*3+1]=c.g;colors[i*3+2]=c.b;}
+    else if(isJupiter){const n=_sn.noise3D(x*2.5,y*0.8,z*2.5);const band=Math.sin(y*3.5+n*0.3);const jCream=new THREE.Color('#f0e0c8'),jLight=new THREE.Color('#e8d5b0'),jMid=new THREE.Color('#c4956a'),jDark=new THREE.Color('#8b5a3c'),jRed=new THREE.Color('#9b4a30');let c;if(band>0.4){c=jCream.clone().lerp(jLight,0.5+Math.random()*0.3);}else if(band>0){c=jLight.clone().lerp(jMid,Math.random()*0.5);}else if(band>-0.3){c=jMid.clone().lerp(jDark,Math.random()*0.4);}else{c=jDark.clone().lerp(jRed,Math.random()*0.4);}if(Math.abs(y)<1.5){c.lerp(jCream,0.2);}if(Math.random()>0.98){c.addScalar(0.08);}c.multiplyScalar(0.8+Math.random()*0.25);colors[i*3]=c.r;colors[i*3+1]=c.g;colors[i*3+2]=c.b;}
+    else if(isMars){const lat_abs=Math.abs(v-0.5)*2;const isIce=lat_abs>0.86;const isSyrtis=Math.abs(v-0.55)<0.08&&Math.abs(u-0.55)<0.1;const isOlympus=Math.abs(v-0.62)<0.04&&Math.abs(u-0.28)<0.04;const isValles=Math.abs(v-0.5)<0.06&&u>0.3&&u<0.5;let c2;if(isIce){c2=new THREE.Color('#eeeedd').lerp(new THREE.Color('#ffffff'),Math.random()*0.4);c2.multiplyScalar(0.7+Math.random()*0.3);}else if(isSyrtis){c2=new THREE.Color('#3a1a0a').lerp(new THREE.Color('#5a2a10'),Math.random());}else if(isOlympus){c2=new THREE.Color('#d4a080').lerp(new THREE.Color('#e8b898'),Math.random());}else{c2=elev>0.15?new THREE.Color('#c48860').lerp(new THREE.Color('#d4986a'),Math.random()*0.3):new THREE.Color('#8a5030').lerp(new THREE.Color('#a06038'),Math.random()*0.3);if(isValles){c2.lerp(new THREE.Color('#6a3020'),0.3+c2.r*0.3);}c2.multiplyScalar(0.85+Math.random()*0.2);}colors[i*3]=c2.r;colors[i*3+1]=c2.g;colors[i*3+2]=c2.b;}
+    else if(isVenus){const swirl=_sn.noise3D(x*1.5,y*1.5,z*1.5)*0.4+_sn.noise3D(x*3,y*3,z*3)*0.2;const lat=Math.abs(v-0.5)*2;const isPolar=lat>0.75;let c;if(isPolar){c=new THREE.Color('#f8f0e0').lerp(new THREE.Color('#eee0c8'),Math.random());}else{c=new THREE.Color('#f0e0b8').lerp(new THREE.Color('#d8c898'),swirl*0.5+0.5);}if(Math.random()>0.97){c.addScalar(0.06);}c.multiplyScalar(0.85+Math.random()*0.2);colors[i*3]=c.r;colors[i*3+1]=c.g;colors[i*3+2]=c.b;}
+    else if(isMercury){const basLat=Math.abs(v-0.5)*2;const basLon=Math.abs((u-0.42+1)%1-0.5)*2;const isCaloris=basLat<0.15&&basLon<0.12;const isCrater=Math.random()<0.08;let c;if(isCaloris){c=new THREE.Color('#e8d8c0').lerp(new THREE.Color('#d4c4a8'),Math.random());}else if(isCrater){c=new THREE.Color('#4a4a4a').lerp(new THREE.Color('#5a5a5a'),Math.random());}else{c=new THREE.Color('#b0b0b0').lerp(new THREE.Color('#909090'),elev*0.4+0.5);c.multiplyScalar(0.9+Math.random()*0.2);}colors[i*3]=c.r;colors[i*3+1]=c.g;colors[i*3+2]=c.b;}
     else if(isSaturn){const n=_sn.noise3D(x*2.5,y*0.8,z*2.5);const band=Math.sin(y*3.5+n*0.3);const saturnCream=new THREE.Color("#f4f0d5"),saturnBeige=new THREE.Color("#d9c37c"),saturnTan=new THREE.Color("#a68f58"),saturnBlue=new THREE.Color("#6b7e8c");let c2;if(band>0.5){c2=saturnCream.clone();}else if(band<-0.3){c2=saturnTan.clone().lerp(saturnBeige,0.4);}else{c2=saturnBeige.clone().lerp(saturnCream,0.3);}if(y>3.0){c2.lerp(saturnBlue,Math.min(1,(y-3.0)/2.5)*0.7);}if(Math.random()>0.99){c2.addScalar(0.1);}c2.multiplyScalar(0.85+Math.random()*0.15);colors[i*3]=c2.r;colors[i*3+1]=c2.g;colors[i*3+2]=c2.b;}
-    else if(isUranus){const lat=Math.abs(v-0.5)*2;const band=Math.floor(lat*10)%6;const shades=[0xccffff,0xaaeedd,0x88ddbb,0xaae8cc,0xbbeeff,0x99ddcc];const c=new THREE.Color(shades[band]);c.multiplyScalar(0.8+Math.random()*0.3);colors[i*3]=c.r;colors[i*3+1]=c.g;colors[i*3+2]=c.b;}
-    else if(isNeptune){const lat=Math.abs(v-0.5)*2;const band=Math.floor(lat*14)%6;const stormS=(lat>0.3&&lat<0.55&&Math.abs(u-0.7)<0.06);const shades=[0x4466ff,0x3355cc,0x5588ff,0x2244aa,0x4477ee,0x3366dd];const c=stormS?new THREE.Color('#112266'):new THREE.Color(shades[band]);c.multiplyScalar(0.8+Math.random()*0.3);colors[i*3]=c.r;colors[i*3+1]=c.g;colors[i*3+2]=c.b;}
+    else if(isUranus){const lat=Math.abs(v-0.5)*2;const n=_sn.noise3D(x*2,y*1.2,z*2);const band=Math.sin(y*3+n*0.25);const isPolar=lat>0.7;let c;if(isPolar){c=new THREE.Color('#d8f8ff').lerp(new THREE.Color('#e8ffff'),0.5+Math.random()*0.3);}else if(band>0.3){c=new THREE.Color('#c8f4f8').lerp(new THREE.Color('#a8e8e8'),Math.random()*0.3);}else if(band>0){c=new THREE.Color('#a0e4e4').lerp(new THREE.Color('#80d0d0'),Math.random()*0.3);}else{c=new THREE.Color('#70c8c0').lerp(new THREE.Color('#50b0a8'),Math.random()*0.3);}c.multiplyScalar(0.85+Math.random()*0.2);colors[i*3]=c.r;colors[i*3+1]=c.g;colors[i*3+2]=c.b;}
+    else if(isNeptune){const n=_sn.noise3D(x*2.2,y*1,z*2.2);const band=Math.sin(y*3.2+n*0.25);const ndark=_sn.noise3D(x*2,y*2,z*2);const isStorm=Math.abs(v-0.55)<0.04&&Math.abs(u-0.68)<0.05;let c;if(isStorm){c=new THREE.Color('#1a1a44').lerp(new THREE.Color('#0a0a33'),Math.random());}else if(band>0.35){c=new THREE.Color('#4466ee').lerp(new THREE.Color('#6688ff'),Math.random()*0.3);}else if(band>0){c=new THREE.Color('#3355dd').lerp(new THREE.Color('#4466ee'),Math.random()*0.3);}else if(band>-0.25){c=new THREE.Color('#2244bb').lerp(new THREE.Color('#3355cc'),Math.random()*0.3);}else{c=new THREE.Color('#1133aa').lerp(new THREE.Color('#2244aa'),Math.random()*0.3);}c.multiplyScalar(0.85+Math.random()*0.2);colors[i*3]=c.r;colors[i*3+1]=c.g;colors[i*3+2]=c.b;}
     else{const c=baseColor.clone().multiplyScalar(0.7+Math.random()*0.5);colors[i*3]=c.r;colors[i*3+1]=c.g;colors[i*3+2]=c.b;}
   }
   // Axial tilt — X-axis tilt for all, Saturn gets extra Z for ref-site look
@@ -699,21 +700,21 @@ function initThreeDetail(p,key){
   // Earth cloud layer
   if(isEarth){const cc2=4000;const cp2=new Float32Array(cc2*3);const cr2=radius+0.3;for(let i=0;i<cc2;i++){const t3=Math.random()*Math.PI*2;const p3=Math.acos(2*Math.random()-1);const latB=Math.abs(p3-Math.PI/2)<0.8?1:0.25;if(Math.random()>latB){cp2[i*3]=0;cp2[i*3+1]=0;cp2[i*3+2]=0;continue;}const r2=cr2+(Math.random()-0.5)*0.4;cp2[i*3]=r2*Math.sin(p3)*Math.cos(t3);cp2[i*3+1]=r2*Math.sin(p3)*Math.sin(t3);cp2[i*3+2]=r2*Math.cos(p3);}const cg2=new THREE.BufferGeometry();cg2.setAttribute('position',new THREE.BufferAttribute(cp2,3));const cm2=new THREE.PointsMaterial({size:0.12,color:0xffffff,transparent:true,opacity:0.22,blending:THREE.AdditiveBlending,sizeAttenuation:true});const cloudMesh=new THREE.Points(cg2,cm2);rotGroup.add(cloudMesh);rotGroup.userData.cloudMesh=cloudMesh;}
   // Earth LEO satellites
-  if(isEarth){const ls=10;const leoGroup=new THREE.Group();for(let i=0;i<ls;i++){const or=radius+0.8+Math.random()*0.8;const sg2=new THREE.BufferGeometry();const sp2=new Float32Array([or,0,0]);sg2.setAttribute('position',new THREE.BufferAttribute(sp2,3));const sm2=new THREE.PointsMaterial({size:0.15,color:0xffffff,transparent:true,opacity:0.85,blending:THREE.AdditiveBlending,sizeAttenuation:true});const satP=new THREE.Points(sg2,sm2);satP.userData={orad:or,phase:Math.random()*Math.PI*2,speed:0.4+Math.random()*1.5,tilt:(Math.random()-0.5)*1.5};leoGroup.add(satP);}group.add(leoGroup);group.userData.leoGroup=leoGroup;}
+  if(isEarth){const ls=6;const leoGroup=new THREE.Group();const leoColors=[0xffffff,0xe06236,0x7da5c6,0xffcc00,0x88bbff,0xffffff];for(let i=0;i<ls;i++){const or=radius+1.2+Math.random()*1.0;const oGrp=new THREE.Group();oGrp.rotation.x=(Math.random()-0.5)*1.2;oGrp.rotation.z=(Math.random()-0.5)*1.2;leoGroup.add(oGrp);const pts=[];for(let j=0;j<=64;j++){const a=j/64*Math.PI*2;pts.push(new THREE.Vector3(Math.cos(a)*or,0,Math.sin(a)*or));}const oGeo=new THREE.BufferGeometry().setFromPoints(pts);const oLine=new THREE.Line(oGeo,new THREE.LineDashedMaterial({color:leoColors[i],transparent:true,opacity:0.35,dashSize:0.3,gapSize:0.25}));oLine.computeLineDistances();oGrp.add(oLine);const satG=new THREE.BufferGeometry();satG.setAttribute('position',new THREE.BufferAttribute(new Float32Array([0,0,0]),3));const satP=new THREE.Points(satG,new THREE.PointsMaterial({size:0.25,color:leoColors[i],transparent:true,opacity:0.95,blending:THREE.AdditiveBlending,sizeAttenuation:true}));satP.userData={orad:or,phase:Math.random()*Math.PI*2,speed:0.6+Math.random()*1.2};oGrp.add(satP);}rotGroup.add(leoGroup);group.userData.leoGroup=leoGroup;}
   // Jupiter Great Red Spot
-  if(isJupiter){const gs=1200;const gp=new Float32Array(gs*3);const gc=new Float32Array(gs*3);for(let i=0;i<gs;i++){const u2=0.35+(Math.random()-0.5)*0.13;const v2=0.55+(Math.random()-0.5)*0.08;const t3=u2*Math.PI*2;const p3=Math.acos(2*v2-1);const r2=radius+0.06;gp[i*3]=r2*Math.sin(p3)*Math.cos(t3);gp[i*3+1]=r2*Math.sin(p3)*Math.sin(t3);gp[i*3+2]=r2*Math.cos(p3);const sc=new THREE.Color('#dd6644').lerp(new THREE.Color('#ff9966'),Math.random());gc[i*3]=sc.r;gc[i*3+1]=sc.g;gc[i*3+2]=sc.b;}const gg=new THREE.BufferGeometry();gg.setAttribute('position',new THREE.BufferAttribute(gp,3));gg.setAttribute('color',new THREE.BufferAttribute(gc,3));const gm=new THREE.PointsMaterial({size:0.2,vertexColors:true,transparent:true,opacity:0.65,blending:THREE.AdditiveBlending,sizeAttenuation:true});rotGroup.add(new THREE.Points(gg,gm));}
-  const wg1=new THREE.WireframeGeometry(new THREE.SphereGeometry(radius*0.98,16,16));const wm1=new THREE.LineBasicMaterial({color:baseColor,transparent:true,opacity:0.03});rotGroup.add(new THREE.LineSegments(wg1,wm1));
-  const rCf={saturn:{rc:20000,rn:7,rr:4.2,yo:0.8,sz:0.06,op:0.45,rx:0.4},jupiter:{rc:2000,rn:7.5,rr:1.2,yo:0.18,co:0xd4c098,sz:0.04,op:0.08,rx:0.2},uranus:{rc:1500,rn:7.2,rr:1.5,yo:0.1,co:0x7fffd4,sz:0.03,op:0.07,rx:1.7},neptune:{rc:1200,rn:6.8,rr:1,yo:0.08,co:0x3e54e8,sz:0.02,op:0.04,rx:0.5}};
-  const cK=rCf[key];if(cK){const rp=new Float32Array(cK.rc*3);const rc2=cK.rc;const rcArr=new Float32Array(rc2*3);for(let i=0;i<rc2;i++){const a2=Math.random()*Math.PI*2;let rd=cK.rn+Math.random()*cK.rr;if(key==='saturn'&&rd>cK.rn+2.8&&rd<cK.rn+3.3)continue;const yOff=(Math.random()-0.5)*cK.yo;rp[i*3]=Math.cos(a2)*rd;rp[i*3+1]=yOff;rp[i*3+2]=Math.sin(a2)*rd;if(key==='saturn'){const ringInnerDark=new THREE.Color("#4a3b2a"),ringMainBright=new THREE.Color("#f0e4c0"),ringOuterIce=new THREE.Color("#a0b0c0");let rc;if(rd<7.8){let mix=(rd-7)/0.8;rc=ringInnerDark.clone().lerp(ringMainBright,mix*0.3);rc.multiplyScalar(0.2+mix*0.4);}else{let mix=(rd-7.8)/3.4;rc=ringMainBright.clone().lerp(ringOuterIce,mix*0.6);rc.multiplyScalar(0.8+Math.random()*0.4);}rcArr[i*3]=rc.r;rcArr[i*3+1]=rc.g;rcArr[i*3+2]=rc.b;}else{rcArr[i*3]=1;rcArr[i*3+1]=1;rcArr[i*3+2]=1;}}const rg2=new THREE.BufferGeometry();rg2.setAttribute('position',new THREE.BufferAttribute(rp,3));if(key==='saturn'){rg2.setAttribute('color',new THREE.BufferAttribute(rcArr,3));const rm2=new THREE.PointsMaterial({size:cK.sz,vertexColors:true,transparent:true,opacity:cK.op,blending:THREE.AdditiveBlending,sizeAttenuation:true});const ringMesh=new THREE.Points(rg2,rm2);if(key==='saturn'){const ringAngles=new Float32Array(rc2);const ringRadii=new Float32Array(rc2);for(let i=0;i<rc2;i++){ringRadii[i]=Math.sqrt(rp[i*3]*rp[i*3]+rp[i*3+2]*rp[i*3+2]);ringAngles[i]=Math.atan2(rp[i*3+2],rp[i*3]);}ringMesh.userData={ringAngles,ringRadii,ringCount:rc2};}rotGroup.add(ringMesh);}else{rg2.setAttribute('color',new THREE.BufferAttribute(rcArr,3));const rm2=new THREE.PointsMaterial({size:cK.sz,vertexColors:true,transparent:true,opacity:cK.op,blending:THREE.AdditiveBlending,sizeAttenuation:true,color:cK.co});const ringMesh=new THREE.Points(rg2,rm2);rotGroup.add(ringMesh);}}
-  if(p.moons&&p.moons.length){const mg=new THREE.Group();rotGroup.add(mg);for(let mi=0;mi<p.moons.length;mi++){const m=p.moons[mi];const ringOuter=cK?cK.rn+cK.rr:0;const orad=Math.max(ringOuter+0.5,radius+2.5,radius+Math.pow(m.distRe,0.6)*2.2);const op=96;const oGeo=new THREE.BufferGeometry().setFromPoints(new THREE.EllipseCurve(0,0,orad,orad,0,Math.PI*2).getPoints(op));const oMat=new THREE.LineDashedMaterial({color:(key==="saturn"&&m.name==="泰坦"?"#e06236":m.color),transparent:true,opacity:(key==="saturn"&&m.name==="泰坦"?0.5:0.28),dashSize:0.15,gapSize:0.2});const oLine=new THREE.Line(oGeo,oMat);oLine.computeLineDistances();oLine.rotation.x=Math.PI/2;mg.add(oLine);const mc=Math.floor(60+m.sizeRe*2000);const mp=new Float32Array(mc*3);for(let j=0;j<mc;j++){const t2=Math.random()*Math.PI*2;const p2=Math.acos(2*Math.random()-1);const r2=m.sizeRe*4;mp[j*3]=r2*Math.sin(p2)*Math.cos(t2);mp[j*3+1]=r2*Math.sin(p2)*Math.sin(t2);mp[j*3+2]=r2*Math.cos(p2);}const mg2=new THREE.BufferGeometry();mg2.setAttribute('position',new THREE.BufferAttribute(mp,3));const mm2=new THREE.PointsMaterial({color:m.color,size:Math.max(0.03,m.sizeRe*0.15),transparent:true,opacity:0.75,blending:THREE.AdditiveBlending,sizeAttenuation:true});const moonMesh=new THREE.Points(mg2,mm2);const ang=mi*2.1;moonMesh.position.x=Math.cos(ang)*orad;moonMesh.position.z=Math.sin(ang)*orad;mg.add(moonMesh);moonMesh.userData={orad,angle:ang,speed:(0.15+Math.random()*0.2)/Math.sqrt(m.distRe)};}}
+    const wg1=new THREE.WireframeGeometry(new THREE.SphereGeometry(radius*0.98,16,16));const wm1=new THREE.LineBasicMaterial({color:baseColor,transparent:true,opacity:0.03});rotGroup.add(new THREE.LineSegments(wg1,wm1));
+  const rCf={saturn:{rc:20000,rn:7,rr:4.2,yo:0.8,sz:0.06,op:0.45,rx:0.4},jupiter:{rc:4000,rn:10,rr:1.5,yo:0.2,co:0xd4c098,sz:0.05,op:0.22,rx:0.2},uranus:{rc:3500,rn:10,rr:2,yo:0.12,co:0x7fffd4,sz:0.04,op:0.18,rx:1.7},neptune:{rc:3000,rn:10,rr:3,yo:0.1,co:0x3e54e8,sz:0.03,op:0.14,rx:0.5}};
+  const cK=rCf[key];if(cK){const rp=new Float32Array(cK.rc*3);const rc2=cK.rc;const rcArr=new Float32Array(rc2*3);for(let i=0;i<rc2;i++){const a2=Math.random()*Math.PI*2;let rd=cK.rn+Math.random()*cK.rr;const yOff=(Math.random()-0.5)*cK.yo;rp[i*3]=Math.cos(a2)*rd;rp[i*3+1]=yOff;rp[i*3+2]=Math.sin(a2)*rd;if(key==='saturn'){const ringInnerDark=new THREE.Color("#4a3b2a"),ringMainBright=new THREE.Color("#f0e4c0"),ringOuterIce=new THREE.Color("#a0b0c0");let rc;if(rd<7.8){let mix=(rd-7)/0.8;rc=ringInnerDark.clone().lerp(ringMainBright,mix*0.3);rc.multiplyScalar(0.2+mix*0.4);}else{let mix=(rd-7.8)/3.4;rc=ringMainBright.clone().lerp(ringOuterIce,mix*0.6);rc.multiplyScalar(0.8+Math.random()*0.4);}rcArr[i*3]=rc.r;rcArr[i*3+1]=rc.g;rcArr[i*3+2]=rc.b;}else{rcArr[i*3]=1;rcArr[i*3+1]=1;rcArr[i*3+2]=1;}}const rg2=new THREE.BufferGeometry();rg2.setAttribute('position',new THREE.BufferAttribute(rp,3));if(key==='saturn'){rg2.setAttribute('color',new THREE.BufferAttribute(rcArr,3));const rm2=new THREE.PointsMaterial({size:cK.sz,vertexColors:true,transparent:true,opacity:cK.op,blending:THREE.AdditiveBlending,sizeAttenuation:true});const ringMesh=new THREE.Points(rg2,rm2);if(key==='saturn'){const ringAngles=new Float32Array(rc2);const ringRadii=new Float32Array(rc2);for(let i=0;i<rc2;i++){ringRadii[i]=Math.sqrt(rp[i*3]*rp[i*3]+rp[i*3+2]*rp[i*3+2]);ringAngles[i]=Math.atan2(rp[i*3+2],rp[i*3]);}ringMesh.userData={ringAngles,ringRadii,ringCount:rc2};}rotGroup.add(ringMesh);}else{rg2.setAttribute('color',new THREE.BufferAttribute(rcArr,3));const rm2=new THREE.PointsMaterial({size:cK.sz,vertexColors:true,transparent:true,opacity:cK.op,blending:THREE.AdditiveBlending,sizeAttenuation:true,color:cK.co});const ringMesh=new THREE.Points(rg2,rm2);rotGroup.add(ringMesh);}}
+  if(p.moons&&p.moons.length){const mg=new THREE.Group();rotGroup.add(mg);for(let mi=0;mi<p.moons.length;mi++){const m=p.moons[mi];const ringOuter=cK?cK.rn+cK.rr:0;const rawOr=radius+Math.pow(m.distRe,0.6)*2.2;const orad=cK&&rawOr<ringOuter?ringOuter+0.5+Math.pow(m.distRe,0.5)*0.4:Math.max(radius+2.5,rawOr);const op=96;const oGeo=new THREE.BufferGeometry().setFromPoints(new THREE.EllipseCurve(0,0,orad,orad,0,Math.PI*2).getPoints(op));const oMat=new THREE.LineDashedMaterial({color:(key==="saturn"&&m.name==="泰坦"?"#e06236":m.color),transparent:true,opacity:(key==="saturn"&&m.name==="泰坦"?0.5:0.28),dashSize:0.15,gapSize:0.2});const oLine=new THREE.Line(oGeo,oMat);oLine.computeLineDistances();oLine.rotation.x=Math.PI/2;mg.add(oLine);const mc=Math.floor(60+m.sizeRe*2000);const mp=new Float32Array(mc*3);for(let j=0;j<mc;j++){const t2=Math.random()*Math.PI*2;const p2=Math.acos(2*Math.random()-1);const pScale=Math.sqrt(p.radiusKm/ER);const r2=m.sizeRe*4/pScale;mp[j*3]=r2*Math.sin(p2)*Math.cos(t2);mp[j*3+1]=r2*Math.sin(p2)*Math.sin(t2);mp[j*3+2]=r2*Math.cos(p2);}const mg2=new THREE.BufferGeometry();mg2.setAttribute('position',new THREE.BufferAttribute(mp,3));const mm2=new THREE.PointsMaterial({color:m.color,size:Math.max(0.03,m.sizeRe*0.15),transparent:true,opacity:0.75,blending:THREE.AdditiveBlending,sizeAttenuation:true});const moonMesh=new THREE.Points(mg2,mm2);const ang=mi*2.1;moonMesh.position.x=Math.cos(ang)*orad;moonMesh.position.z=Math.sin(ang)*orad;mg.add(moonMesh);moonMesh.userData={orad,angle:ang,speed:(0.15+Math.random()*0.2)/Math.sqrt(m.distRe)};}}
   let t=0,animId=null;const _onCM=e=>e.preventDefault();
   canvas.addEventListener('contextmenu',_onCM);
   window._detailEvCleanup=()=>{canvas.removeEventListener('contextmenu',_onCM);};
+  canvas.addEventListener('mousemove',e=>{hideTip();});
   function animate(){animId=requestAnimationFrame(animate);t+=0.005;rotGroup.rotation.y+=0.001;
     if(p.moons&&p.moons.length){group.children.forEach(g=>{if(g.type==='Group')g.children.forEach(g2=>{if(g2.type==='Group')g2.children.forEach(g3=>{if(g3.type==='Group')g3.children.forEach(mesh=>{if(mesh.isPoints&&mesh.userData.angle!==undefined){mesh.userData.angle+=mesh.userData.speed*0.012;const md=mesh.userData;mesh.position.x=Math.cos(md.angle)*md.orad;mesh.position.z=Math.sin(md.angle)*md.orad;}});});});});}
     // Planet-specific animations
     if(isEarth&&rotGroup.userData.cloudMesh){rotGroup.userData.cloudMesh.rotation.y+=0.0015;}
-    if(isEarth&&group.userData.leoGroup){group.userData.leoGroup.children.forEach(sat=>{const d=sat.userData;d.phase+=d.speed*0.008;sat.position.x=Math.cos(d.phase)*d.orad;sat.position.z=Math.sin(d.phase)*d.orad;sat.position.y=Math.sin(d.phase*0.7)*0.2;});}
+    if(isEarth&&group.userData.leoGroup){group.userData.leoGroup.children.forEach(oGrp=>{if(oGrp.type==='Group')oGrp.children.forEach(mesh=>{if(mesh.isPoints&&mesh.userData.phase!==undefined){const d=mesh.userData;d.phase+=d.speed*0.008;mesh.position.x=Math.cos(d.phase)*d.orad;mesh.position.z=Math.sin(d.phase)*d.orad;mesh.position.y=0;}});});}
     if(cK){rotGroup.children.forEach(child=>{if(child.isPoints&&child.userData.ringAngles){const rd=child.userData;const pos=child.geometry.attributes.position.array;for(let i=0;i<rd.ringCount;i++){const r=rd.ringRadii[i];const speed=0.015*Math.pow(r,-1.5);rd.ringAngles[i]+=speed;pos[i*3]=Math.cos(rd.ringAngles[i])*r;pos[i*3+2]=Math.sin(rd.ringAngles[i])*r;}child.geometry.attributes.position.needsUpdate=true;}else if(child.isPoints&&child.geometry.attributes.position.count>800&&child.material.opacity>0.05&&child.material.opacity<0.5){child.rotation.y+=0.0006;}});}
     renderer.render(scene,camera);}animate();
   const ro=new ResizeObserver(()=>{const w=ov.clientWidth,h=ov.clientHeight;if(w>0&&h>0){camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);}});ro.observe(ov);
