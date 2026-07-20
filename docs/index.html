@@ -151,6 +151,11 @@ nav::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;ba
   .data-block.terminal{font-size:9px;max-width:260px}
   .system-monitor-body.detail-mode{width:180px;height:180px}
 }
+
+/* Safe area insets for mobile browsers */
+.controls-bar{padding-bottom:calc(8px + env(safe-area-inset-bottom, 0px))}
+.zoom-slider-container{padding-bottom:env(safe-area-inset-bottom, 0px)}
+#page-switcher{padding-bottom:env(safe-area-inset-bottom, 0px)}
 </style>
 </head>
 <body>
@@ -170,7 +175,7 @@ nav::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;ba
 </div>
 
 <div id="main-view" class="page active">
-  <canvas id="main-canvas"></canvas>
+  <canvas id="main-canvas" aria-label="太阳系交互视图，可使用鼠标拖拽和滚轮操作"></canvas>
   <div class="controls-bar">
     <div class="ctrl-group" id="speed-group">
       <span class="ctrl-label">速度</span>
@@ -210,7 +215,7 @@ nav::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;ba
 </div>
 
 <div id="planet-overlay">
-  <canvas id="detail-canvas"></canvas>
+  <canvas id="detail-canvas" aria-label="行星详情三维视图"></canvas>
   <div id="planet-ui-root"></div>
 </div>
 
@@ -233,31 +238,31 @@ const ER=6371;const SR=695508/ER;const AU_ER=149597870.7/ER;
 const PLANET_DETAILS = {
   sun:{title:'太阳',badge:'SOL',designation:'SOL',solIndex:'',sub:'恒星 // 光谱类型: <b>G2V</b> // 年龄: <b>46亿年</b>',rows:[
     '表面温度............... <span>5778 K</span>','核心温度............... <span class="val warn">15,700,000 K</span>','太阳风速度............. <span>400 km/s</span> <span class="val alert">[活跃]</span>','磁场极性.............. <span>反转过中</span> <span class="val warn">[周期内]</span>','自转周期............... <span>25.4 天</span> (赤道)','光谱分类............... <span>G2V</span> <span class="val pos">[主序星]</span>','光度等级.............. <span>3.828 \u00d7 10<sup>26</sup> W</span>'
-  ]},
+  ],camDist:32,particleCount:30000,zoomBaseDist:14,ringConfig:null},
   mercury:{title:'水星',badge:'MERCURY',designation:'SOL I',solIndex:'I',sub:'类地行星 // 轨道: <b>0.39 AU</b> // 偏心率: <b>0.2056</b>',rows:[
     '地表构成............... <span>焦灼玄武岩 / 冲击坑</span>','大气成分............... <span>Na / K / O\u2082</span> <span class="val alert">[痕量]</span>','温度范围............... <span>-180\u00b0C ~ 430\u00b0C</span>','磁场强度............... <span>~1.1% 地球</span> <span class="val warn">[微弱]</span>','自转周期............... <span>58.6 天</span>','已知卫星............... <span>0 个</span>','探测任务............... <span>信使号 / 贝皮科伦布</span>'
-  ]},
+  ],camDist:42,particleCount:22000,zoomBaseDist:17,ringConfig:null},
   venus:{title:'金星',badge:'VENUS',designation:'SOL II',solIndex:'II',sub:'类地行星 // 轨道: <b>0.72 AU</b> // 偏心率: <b>0.0068</b>',rows:[
     '地表构成............... <span>火山平原 / 高地</span>','大气成分............... <span>CO\u2082 / H\u2082SO\u2084</span> <span class="val alert">[超临界]</span>','表面温度............... <span>462\u00b0C</span> <span class="val warn">[最高]</span>','大气压强............... <span>92 bar</span> (地球92倍)','自转方向............... <span>逆行</span> <span class="val warn">[金星日 > 金星年]</span>','已知卫星............... <span>0 个</span>','探测任务............... <span>麦哲伦号 / 金星快车</span>'
-  ]},
+  ],camDist:43,particleCount:25000,zoomBaseDist:18,ringConfig:null},
   earth:{title:'地球',badge:'TERRA',designation:'SOL III',solIndex:'III',sub:'类地行星 // 轨道: <b>1.00 AU</b> // 偏心率: <b>0.0167</b>',rows:[
     '地表构成............... <span>硅酸盐 / 液态水(70.8%)</span>','大气成分............... <span>N\u2082(78%) / O\u2082(21%)</span> <span class="val pos">[生命维持]</span>','生物圈................ <span>活跃</span> <span class="val pos">[碳基生命]</span>','表面温度............... <span>-89\u00b0C ~ 57\u00b0C</span> (平均 15\u00b0C)','磁场................... <span>活跃</span> <span class="val pos">[磁层保护]</span>','轨道资产............... <span>LEO \u00d75 + GEO \u00d712</span>','探测任务............... <span>ISS / 哈勃 / JWST</span>'
-  ]},
+  ],camDist:44,particleCount:30000,zoomBaseDist:19,ringConfig:null},
   mars:{title:'火星',badge:'MARS',designation:'SOL IV',solIndex:'IV',sub:'类地行星 // 轨道: <b>1.52 AU</b> // 偏心率: <b>0.0934</b>',rows:[
     '地表构成............... <span>氧化铁 / 玄武岩</span>','大气成分............... <span>CO\u2082(95%) / Ar / N\u2082</span> <span class="val alert">[稀薄]</span>','温度范围............... <span>-87\u00b0C ~ -5\u00b0C</span> (平均 -63\u00b0C)','极冠特征............... <span>水冰 + 干冰</span> <span class="val warn">[季节性]</span>','已知卫星............... <span>2 个</span> (火卫一 / 火卫二)','探测任务............... <span>火星车 \u00d76</span> <span class="val pos">[活跃]</span>','轨道资产............... <span>MRO / 天问 / MOM</span>'
-  ]},
+  ],camDist:44,particleCount:25000,zoomBaseDist:19,ringConfig:null},
   jupiter:{title:'木星',badge:'JUPITER',designation:'SOL V',solIndex:'V',sub:'气态巨行星 // 轨道: <b>5.20 AU</b> // 偏心率: <b>0.0484</b>',rows:[
     '类型................... <span>气态巨行星</span> <span class="val alert">[无固体表面]</span>','大气成分............... <span>H\u2082(89%) / He(10%) / NH\u2083</span>','大红斑................ <span>活跃</span> <span class="val warn">[持续 350+ 年]</span>','云顶温度............... <span>-145\u00b0C</span>','磁场................... <span>4.2 Gauss</span> (地球14倍)','环系统................ <span>微弱</span> (尘埃环)','已知卫星............... <span>95 个</span> <span class="val pos">[伽利略4 + 10]</span>'
-  ]},
+  ],camDist:51,particleCount:35000,zoomBaseDist:26,ringConfig:{mainParticles:4000,innerRadius:10,ringWidth:1.5,yOffset:0.2,particleSize:0.05,opacity:0.22,rotX:0.2,color:"#d4c098"}},
   saturn:{title:'土星',badge:'SATURN',designation:'SOL VI',solIndex:'VI',sub:'气态巨行星 // 轨道: <b>9.58 AU</b> // 偏心率: <b>0.0542</b>',rows:[
     '类型................... <span>气态巨行星</span> <span class="val alert">[密度 < 水]</span>','大气成分............... <span>H\u2082(96%) / He(3%) / CH\u2084</span>','极冠特征............... <span>六边形风暴</span> <span class="val warn">[北极]</span>','环系统................ <span>显著</span> <span class="val pos">[冰 / 岩石 / A-F环]</span>','云顶温度............... <span>-178\u00b0C</span>','自转周期............... <span>10.7 小时</span> (赤道)','已知卫星............... <span>146 个</span> <span class="val pos">[泰坦 + 7]</span>'
-  ]},
+  ],camDist:70,particleCount:35000,zoomBaseDist:45,ringConfig:{mainParticles:25000,innerRadius:9.2,ringWidth:4.4,yOffset:0.6,particleSize:0.06,opacity:0.45,rotX:0.4}},
   uranus:{title:'天王星',badge:'URANUS',designation:'SOL VII',solIndex:'VII',sub:'冰巨行星 // 轨道: <b>19.22 AU</b> // 偏心率: <b>0.0472</b>',rows:[
     '类型................... <span>冰巨行星</span> <span class="val alert">[侧躺自转]</span>','大气成分............... <span>H\u2082 / He / CH\u2084(2.3%)</span>','自转轴倾角............. <span>97.8\u00b0</span> <span class="val warn">[极端倾斜]</span>','云顶温度............... <span>-224\u00b0C</span> <span class="val warn">[最冷]</span>','环系统................ <span>暗淡</span> (13条窄环)','已知卫星............... <span>27 个</span> (5颗主卫星)','探测任务............... <span>旅行者2号</span> <span class="val warn">[仅一次]</span>'
-  ]},
+  ],camDist:47,particleCount:30000,zoomBaseDist:22,ringConfig:{mainParticles:0,innerRadius:0,ringWidth:0,yOffset:0,particleSize:0,opacity:0,rotX:1.7}},
   neptune:{title:'海王星',badge:'NEPTUNE',designation:'SOL VIII',solIndex:'VIII',sub:'冰巨行星 // 轨道: <b>30.07 AU</b> // 偏心率: <b>0.0086</b>',rows:[
     '类型................... <span>冰巨行星</span> <span class="val alert">[超音速风]</span>','大气成分............... <span>H\u2082 / He / CH\u2084 / NH\u2083</span>','风速................... <span>2,100 km/h</span> <span class="val warn">[太阳系最快]</span>','云顶温度............... <span>-218\u00b0C</span>','环系统................ <span>微弱</span> (尘埃 / 弧结构)','已知卫星............... <span>16 个</span> (特里同为主)','探测任务............... <span>旅行者2号</span> <span class="val warn">[仅一次]</span>'
-  ]},
+  ],camDist:47,particleCount:30000,zoomBaseDist:22,ringConfig:{mainParticles:0,innerRadius:0,ringWidth:0,yOffset:0,particleSize:0,opacity:0,rotX:0.5}},
 };
 
 const tip=document.getElementById('tooltip');
@@ -418,15 +423,7 @@ const view=new SolarView();
 const sp=[0.25,0.5,1,2,5,10,50,200];let si=2;
 function adjSpeed(d){si=Math.max(0,Math.min(sp.length-1,si+d));view.speed=sp[si];document.getElementById('speed-display').textContent=sp[si]+'×';}
 function switchPage(p){
-  if(p===view.mode){
-    view._flyFrom=view._layout();
-    view.resetCamera();view._up=true;
-    view._flyTo=view._layout();
-    view._flyProgress=0;view._flyTargetMode=view.mode;
-    view._onFlyDone=()=>{};
-    const f=document.getElementById('mz-vfill'),t=document.getElementById('mz-vthumb');
-    if(f){f.style.transition='height 0.6s cubic-bezier(0.7,0,0.3,1)';t.style.transition='bottom 0.6s cubic-bezier(0.7,0,0.3,1)';f.style.height='50%';t.style.bottom='50%';}
-    return;}
+  if(p===view.mode) return;
   hideTip();
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.page===p));
   view._flyFrom=view._layout();
@@ -529,7 +526,7 @@ function openDetail(key){
       fill.style.width=(frac*100)+'%';thumb.style.left=(frac*100)+'%';
       const zd=uiRoot.querySelector('#zoom-text-display');if(zd)zd.textContent=Math.round(zpct)+'%';
       const tz=uiRoot.querySelector('#tl-zoom');if(tz)tz.textContent=Math.round(zpct)+'%';
-      if(window._detailCamera){const bdMap={sun:15,mercury:17,venus:18,earth:19,mars:19,jupiter:26,saturn:45,uranus:22,neptune:22};const bd=bdMap[key]||20;const ta=20*Math.PI/180;const nd=bd+(100-zpct)*0.5;window._detailCamera.position.set(0,nd*Math.sin(ta),nd*Math.cos(ta));window._detailCamera.lookAt(0,0,0);}
+      if(window._detailCamera){const bdPlanet=PLANET_DETAILS[key];const bd=bdPlanet?bdPlanet.zoomBaseDist:20;const ta=20*Math.PI/180;const nd=bd+(100-zpct)*0.5;window._detailCamera.position.set(0,nd*Math.sin(ta),nd*Math.cos(ta));window._detailCamera.lookAt(0,0,0);}
     }
     let dragging=false;
     track.addEventListener('mousedown',function(e){dragging=true;
@@ -585,8 +582,7 @@ function initThreeDetail(p,key){
   // Tilted camera for orbit visibility (~20deg down angle)
   // Distances tuned per planet for comfortable viewing:
   // Saturn needs wide view for rings, gas giants need room for moons
-  const cdMap={sun:40,mercury:42,venus:43,earth:44,mars:44,jupiter:51,saturn:70,uranus:47,neptune:47};
-  const camDist=cdMap[key]||20;
+  const bd=PLANET_DETAILS[key];const camDist=(bd&&bd.camDist)||20;
   const camTilt=20*Math.PI/180;
   camera.position.set(0,camDist*Math.sin(camTilt),camDist*Math.cos(camTilt));
   camera.lookAt(0,0,0);window._detailCamera=camera;
@@ -601,13 +597,13 @@ function initThreeDetail(p,key){
     const pc=30000;const pp=new Float32Array(pc*3);const pc2=new Float32Array(pc*3);const op=new Float32Array(pc*3);
     for(let i=0;i<pc;i++){const t=Math.random()*Math.PI*2;const p=Math.acos(2*Math.random()-1);const x=6*Math.sin(p)*Math.cos(t),y=6*Math.sin(p)*Math.sin(t),z=6*Math.cos(p);pp[i*3]=x;pp[i*3+1]=y;pp[i*3+2]=z;op[i*3]=x;op[i*3+1]=y;op[i*3+2]=z;pc2[i*3]=1;pc2[i*3+1]=1;pc2[i*3+2]=1;}
     const pg=new THREE.BufferGeometry();pg.setAttribute('position',new THREE.BufferAttribute(pp,3));pg.setAttribute('color',new THREE.BufferAttribute(pc2,3));pg.userData.orig=op;
-    const pm=new THREE.PointsMaterial({size:0.09,vertexColors:true,transparent:true,opacity:0.95,blending:THREE.AdditiveBlending,sizeAttenuation:true});
+    const pm=new THREE.PointsMaterial({size:0.11,vertexColors:true,transparent:false,blending:THREE.NormalBlending,sizeAttenuation:true,depthWrite:true});
     const sp=new THREE.Points(pg,pm);sg.add(sp);
     const spotGroup=new THREE.Group();sg.add(spotGroup);for(let s=0;s<6;s++){const su=Math.random();const sv=0.35+Math.random()*0.3;const sr=0.03+Math.random()*0.04;const sc2=200;const spp2=new Float32Array(sc2*3);const spc2=new Float32Array(sc2*3);for(let i=0;i<sc2;i++){const du=(Math.random()-0.5)*sr*2;const dv=(Math.random()-0.5)*sr*1.3;if(du*du/(sr*sr)+dv*dv/(sr*0.7*sr*0.7)>1)continue;const u2=su+du;const v2=sv+dv;const t4=u2*Math.PI*2;const p4=Math.acos(2*v2-1);const r4=5.95;const i3=i*3;spp2[i3]=r4*Math.sin(p4)*Math.cos(t4);spp2[i3+1]=r4*Math.sin(p4)*Math.sin(t4);spp2[i3+2]=r4*Math.cos(p4);const sc3=new THREE.Color('#331100').lerp(new THREE.Color('#552200'),Math.random());spc2[i3]=sc3.r;spc2[i3+1]=sc3.g;spc2[i3+2]=sc3.b;}const spg2=new THREE.BufferGeometry();spg2.setAttribute('position',new THREE.BufferAttribute(spp2,3));spg2.setAttribute('color',new THREE.BufferAttribute(spc2,3));const spm2=new THREE.PointsMaterial({size:0.06,vertexColors:true,transparent:true,opacity:0.45,depthWrite:false});spotGroup.add(new THREE.Points(spg2,spm2));}
-    const cc=5000;const cp=new Float32Array(cc*3);const cp2=new Float32Array(cc*3);
-    for(let i=0;i<cc;i++){const rr2=4+Math.random()*1.5;const t2=Math.random()*Math.PI*2;const p2=Math.acos(2*Math.random()-1);cp[i*3]=rr2*Math.sin(p2)*Math.cos(t2);cp[i*3+1]=rr2*Math.sin(p2)*Math.sin(t2);cp[i*3+2]=rr2*Math.cos(p2);const nd=(rr2-4)/1.5;const c3=new THREE.Color('#ffffff').lerp(new THREE.Color('#ffb84d'),nd);cp2[i*3]=c3.r;cp2[i*3+1]=c3.g;cp2[i*3+2]=c3.b;}
+    const cc=2000;const cp=new Float32Array(cc*3);const cp2=new Float32Array(cc*3);
+    for(let i=0;i<cc;i++){const rr2=3+Math.random()*1.0;const t2=Math.random()*Math.PI*2;const p2=Math.acos(2*Math.random()-1);cp[i*3]=rr2*Math.sin(p2)*Math.cos(t2);cp[i*3+1]=rr2*Math.sin(p2)*Math.sin(t2);cp[i*3+2]=rr2*Math.cos(p2);const nd=(rr2-3)/1.0;const c3=new THREE.Color('#ffcc66').lerp(new THREE.Color('#e08030'),nd);cp2[i*3]=c3.r;cp2[i*3+1]=c3.g;cp2[i*3+2]=c3.b;}
     const cg=new THREE.BufferGeometry();cg.setAttribute('position',new THREE.BufferAttribute(cp,3));cg.setAttribute('color',new THREE.BufferAttribute(cp2,3));
-    const cm=new THREE.PointsMaterial({size:0.12,vertexColors:true,transparent:true,opacity:0.85,blending:THREE.AdditiveBlending,sizeAttenuation:true});
+    const cm=new THREE.PointsMaterial({size:0.08,vertexColors:true,transparent:true,opacity:0.35,blending:THREE.AdditiveBlending,sizeAttenuation:true,depthWrite:false});
     const coreP=new THREE.Points(cg,cm);sg.add(coreP);
     const mlg=new THREE.Group();sg.add(mlg);const loops=[];
     for(let i=0;i<12;i++){const r2=5.8;const t1=Math.random()*Math.PI*2;const p1=Math.acos(2*Math.random()-1);const pt1=new THREE.Vector3().setFromSphericalCoords(r2,p1,t1);const off=new THREE.Vector3((Math.random()-0.5)*3,(Math.random()-0.5)*3,(Math.random()-0.5)*3);const pt2=pt1.clone().add(off).normalize().multiplyScalar(r2);const mid=pt1.clone().add(pt2).multiplyScalar(0.5).normalize().multiplyScalar(r2*(1.3+Math.random()*0.5));const curve=new THREE.CubicBezierCurve3(pt1,pt1.clone().lerp(mid,0.5),pt2.clone().lerp(mid,0.5),pt2);const pts=curve.getPoints(60);const lg=new THREE.BufferGeometry().setFromPoints(pts);const rn=Math.random();const lc=rn>0.6?0xffb84d:(rn<0.3?0xcc4400:0xe06236);const lm=new THREE.PointsMaterial({color:lc,size:0.05,transparent:true,opacity:0.6,blending:THREE.AdditiveBlending});const lp=new THREE.Points(lg,lm);mlg.add(lp);loops.push({mesh:lp,flowOff:Math.random()*100});}
@@ -616,10 +612,6 @@ function initThreeDetail(p,key){
     const cog=new THREE.BufferGeometry();cog.setAttribute('position',new THREE.BufferAttribute(cop,3));cog.setAttribute('color',new THREE.BufferAttribute(coc2,3));
     const com=new THREE.PointsMaterial({size:0.1,vertexColors:true,transparent:true,opacity:0.4,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true});
     const coronaM=new THREE.Points(cog,com);coronaM.userData={baseR:6.1,maxR2:9.1,dirs:cod,spds:cos};sg.add(coronaM);
-    const g1=new THREE.WireframeGeometry(new THREE.SphereGeometry(6,24,24));const m1=new THREE.LineBasicMaterial({color:0xffb84d,transparent:true,opacity:0.15});
-    const igrid=new THREE.LineSegments(g1,m1);sg.add(igrid);
-    const g2=new THREE.WireframeGeometry(new THREE.SphereGeometry(6.5,32,32));const m2=new THREE.LineBasicMaterial({color:0xcc4400,transparent:true,opacity:0.05});
-    const ogrid=new THREE.LineSegments(g2,m2);sg.add(ogrid);
     const me=2000;const epp=new Float32Array(me*3);const epc2=new Float32Array(me*3);const epd=[];
     for(let i=0;i<me;i++){epp[i*3]=0;epp[i*3+1]=0;epp[i*3+2]=0;epc2[i*3]=1;epc2[i*3+1]=1;epc2[i*3+2]=1;epd.push({active:false,vel:new THREE.Vector3(),life:0,maxL:0,sPos:new THREE.Vector3()});}
     const eg=new THREE.BufferGeometry();eg.setAttribute('position',new THREE.BufferAttribute(epp,3));eg.setAttribute('color',new THREE.BufferAttribute(epc2,3));
@@ -629,14 +621,13 @@ function initThreeDetail(p,key){
     let tm=0,aid=null;const _onCM=e=>e.preventDefault();
     canvas.addEventListener('contextmenu',_onCM);
     function anim(){aid=requestAnimationFrame(anim);tm+=0.005;
-      coreP.rotation.y+=0.006;const pls=1+Math.sin(tm*3)*0.005;coreP.scale.set(pls,pls,pls);
-      igrid.rotation.y+=0.002;ogrid.rotation.y-=0.002;ogrid.rotation.z+=0.0005;
+      coreP.rotation.y=(coreP.rotation.y+0.0001)%(Math.PI*2);sg.rotation.y=(sg.rotation.y+0.0001)%(Math.PI*2);const pls=1+Math.sin(tm*3)*0.005;coreP.scale.set(pls,pls,pls);
       const ppos=pg.attributes.position.array;const pcol2=pg.attributes.color.array;const orig2=pg.userData.orig;
-      const cC=new THREE.Color('#ffffff');const cS=new THREE.Color('#ffb84d');const cE=new THREE.Color('#cc4400');const cSp=new THREE.Color('#8a1c00');
+      const cC=new THREE.Color('#ffe0b0');const cS=new THREE.Color('#f0a030');const cE=new THREE.Color('#b84410');const cSp=new THREE.Color('#551100');
       for(let i=0;i<pc;i++){const i3=i*3;const ox=orig2[i3],oy=orig2[i3+1],oz=orig2[i3+2];
         let n=ng.noise3D(ox*0.4,oy*0.4,oz*0.4+tm*0.3);n+=0.5*ng.noise3D(ox*1.5,oy*1.5,oz*1.5-tm*0.5);const lz=oz/6;const c=new THREE.Color();
-        if(n>0.6)c.copy(cC);else if(n>0)c.copy(cS).lerp(cC,n);else if(n>-0.5)c.copy(cE).lerp(cS,(n+0.5)*2);else c.copy(cSp).lerp(cE,(n+1)*2);
-        if(lz<0.5)c.lerp(cSp,(0.5-lz)*1.5);pcol2[i3]=c.r;pcol2[i3+1]=c.g;pcol2[i3+2]=c.b;
+        if(n>0.8)c.copy(cC);else if(n>0.2)c.copy(cS).lerp(cC,(n-0.2)/0.6);else if(n>-0.3)c.copy(cE).lerp(cS,(n+0.3)/0.5);else c.copy(cSp).lerp(cE,(n+1.3)/1.0);
+        if(lz<0.5)c.lerp(cSp,(0.5-lz)*1.8);pcol2[i3]=c.r;pcol2[i3+1]=c.g;pcol2[i3+2]=c.b;
         const sc=1+n*0.05;ppos[i3]=ox*sc;ppos[i3+1]=oy*sc;ppos[i3+2]=oz*sc;
       }pg.attributes.position.needsUpdate=true;pg.attributes.color.needsUpdate=true;
       const cp3=coronaM.geometry.attributes.position.array;const dr=coronaM.userData.dirs;const spd=coronaM.userData.spds;const bR=coronaM.userData.baseR;const mR=coronaM.userData.maxR2;
@@ -655,22 +646,22 @@ function initThreeDetail(p,key){
         d2.vel.addScaledVector(dc,0.002*0.15);d2.vel.multiplyScalar(1-0.003*0.15);d2.life+=0.15;const pr=d2.life/d2.maxL;
         const c5=new THREE.Color();if(pr<0.15)c5.copy(cH).lerp(cM2,pr/0.15);else c5.copy(cM2).lerp(cCo,(pr-0.15)/0.85);
         ec2[i*3]=c5.r;ec2[i*3+1]=c5.g;ec2[i*3+2]=c5.b;
-        if(d2.life>=d2.maxL||cd<5.8){d2.active=false;ep2[i*3]=0;ep2[i*3+1]=0;ep2[i*3+2]=0;}}}
+        if(d2.life>=d2.maxL||cd<5.8){d2.active=false;ep2[i*3]=100;ep2[i*3+1]=100;ep2[i*3+2]=100;ec2[i*3]=0;ec2[i*3+1]=0;ec2[i*3+2]=0;}}}
       eg.attributes.position.needsUpdate=true;eg.attributes.color.needsUpdate=true;
       renderer.render(scene,camera);}
     // Store cleanup for sun event listeners
+    detailCleanup=()=>{window._detailEvCleanup=null;if(aid)cancelAnimationFrame(aid);renderer.clear(true,true,true);renderer.dispose();scene.traverse(obj=>{if(obj.geometry)obj.geometry.dispose();if(obj.material)obj.material.dispose();});while(group.children.length)group.remove(group.children[0]);};
     window._detailEvCleanup=()=>{canvas.removeEventListener('contextmenu',_onCM);};
     anim();return;
   }
   window._detailEvCleanup=null;
   const texSize=128;const texData=new Float32Array(texSize*texSize);
   for(let ty=0;ty<texSize;ty++){for(let tx=0;tx<texSize;tx++){const u=tx/texSize,v=ty/texSize;texData[ty*texSize+tx]=_sn.noise2D(u*5+0.01,v*5+0.01)+_sn.noise2D(u*2+20,v*2+20)*0.5+_sn.noise2D(u*8+40,v*8+40)*0.25;}}
-  const pcMap={sun:30000,mercury:22000,venus:25000,earth:30000,mars:25000,jupiter:35000,saturn:35000,uranus:30000,neptune:30000};
-  const pCount=pcMap[key]||12000;const positions=new Float32Array(pCount*3);const colors=new Float32Array(pCount*3);const origPos=new Float32Array(pCount*3);
+  const pCount=(bd&&bd.particleCount)||12000;const positions=new Float32Array(pCount*3);const colors=new Float32Array(pCount*3);const origPos=new Float32Array(pCount*3);
   for(let i=0;i<pCount;i++){const t2=Math.random()*Math.PI*2;const p2=Math.acos(2*Math.random()-1);const x=radius*Math.sin(p2)*Math.cos(t2),y=radius*Math.sin(p2)*Math.sin(t2),z=radius*Math.cos(p2);positions[i*3]=x;positions[i*3+1]=y;positions[i*3+2]=z;origPos[i*3]=x;origPos[i*3+1]=y;origPos[i*3+2]=z;
     const u=Math.atan2(z,x)/(Math.PI*2)+0.5;const v=Math.asin(y/radius)/Math.PI+0.5;
     const tx2=Math.floor(u*texSize)%texSize,ty2=Math.floor(v*texSize)%texSize;const elev=texData[ty2*texSize+tx2];
-    if(isEarth){const latAbs=Math.abs(v-0.5)*2;const isIce=latAbs>0.84;const isOcean=elev<0.05||(elev<0.12&&Math.abs(v-0.5)<0.15);let c;if(isIce){c=new THREE.Color('#f0f4f8').lerp(new THREE.Color('#ffffff'),Math.random()*0.5);c.multiplyScalar(0.9+Math.random()*0.1);}else if(isOcean){c=new THREE.Color('#0a2a6a').lerp(new THREE.Color('#1a4a8a'),Math.random()*0.3);}else{c=elev>0.25?new THREE.Color('#2d7a1e').lerp(new THREE.Color('#6a5a2a'),Math.min(1,elev*1.5)).lerp(new THREE.Color('#3a8a2a'),0.3+Math.random()*0.2):new THREE.Color('#3a8a2a').lerp(new THREE.Color('#5a9a3a'),Math.random()*0.3);}colors[i*3]=c.r;colors[i*3+1]=c.g;colors[i*3+2]=c.b;}
+    if(isEarth){const latAbs=Math.abs(v-0.5)*2;const iceEdge=_sn.noise2D(u*14,v*10)*0.08+_sn.noise2D(u*6+100,v*6+100)*0.05;const isIce=latAbs>0.78+iceEdge;const coastalIce=!isIce&&latAbs>0.72+iceEdge;const isOcean=elev<0.05||(elev<0.12&&Math.abs(v-0.5)<0.15);let c;if(isIce){const iceF=_sn.noise2D(u*10,v*10+300);if(iceF>0.5){c=new THREE.Color('#f8fcff').lerp(new THREE.Color('#ffffff'),Math.random()*0.3);}else if(iceF>0){c=new THREE.Color('#e8f2fa').lerp(new THREE.Color('#f0f6fc'),Math.random()*0.4);}else{c=new THREE.Color('#d8e6f2').lerp(new THREE.Color('#e4eef4'),Math.random()*0.4);}c.multiplyScalar(0.88+Math.random()*0.12);}else if(coastalIce){c=new THREE.Color('#dce8f0').lerp(new THREE.Color('#eef4f8'),Math.random()*0.5);c.multiplyScalar(0.82+Math.random()*0.18);}else if(isOcean){c=new THREE.Color('#0a2a6a').lerp(new THREE.Color('#1a4a8a'),Math.random()*0.3);}else{c=elev>0.25?new THREE.Color('#2d7a1e').lerp(new THREE.Color('#6a5a2a'),Math.min(1,elev*1.5)).lerp(new THREE.Color('#3a8a2a'),0.3+Math.random()*0.2):new THREE.Color('#3a8a2a').lerp(new THREE.Color('#5a9a3a'),Math.random()*0.3);}colors[i*3]=c.r;colors[i*3+1]=c.g;colors[i*3+2]=c.b;}
     else if(isJupiter){const n=_sn.noise3D(x*2.5,y*0.8,z*2.5);const band=Math.sin(y*3.5+n*0.3);const jCream=new THREE.Color('#f0e0c8'),jLight=new THREE.Color('#e8d5b0'),jMid=new THREE.Color('#c4956a'),jDark=new THREE.Color('#8b5a3c'),jRed=new THREE.Color('#9b4a30');let c;if(band>0.4){c=jCream.clone().lerp(jLight,0.5+Math.random()*0.3);}else if(band>0){c=jLight.clone().lerp(jMid,Math.random()*0.5);}else if(band>-0.3){c=jMid.clone().lerp(jDark,Math.random()*0.4);}else{c=jDark.clone().lerp(jRed,Math.random()*0.4);}if(Math.abs(y)<1.5){c.lerp(jCream,0.2);}if(Math.random()>0.98){c.addScalar(0.08);}c.multiplyScalar(0.8+Math.random()*0.25);colors[i*3]=c.r;colors[i*3+1]=c.g;colors[i*3+2]=c.b;}
     else if(isMars){const lat_abs=Math.abs(v-0.5)*2;const isIce=lat_abs>0.86;const isSyrtis=Math.abs(v-0.55)<0.08&&Math.abs(u-0.55)<0.1;const isOlympus=Math.abs(v-0.62)<0.04&&Math.abs(u-0.28)<0.04;const isValles=Math.abs(v-0.5)<0.06&&u>0.3&&u<0.5;let c2;if(isIce){c2=new THREE.Color('#eeeedd').lerp(new THREE.Color('#ffffff'),Math.random()*0.4);c2.multiplyScalar(0.7+Math.random()*0.3);}else if(isSyrtis){c2=new THREE.Color('#3a1a0a').lerp(new THREE.Color('#5a2a10'),Math.random());}else if(isOlympus){c2=new THREE.Color('#d4a080').lerp(new THREE.Color('#e8b898'),Math.random());}else{c2=elev>0.15?new THREE.Color('#c48860').lerp(new THREE.Color('#d4986a'),Math.random()*0.3):new THREE.Color('#8a5030').lerp(new THREE.Color('#a06038'),Math.random()*0.3);if(isValles){c2.lerp(new THREE.Color('#6a3020'),0.3+c2.r*0.3);}c2.multiplyScalar(0.85+Math.random()*0.2);}colors[i*3]=c2.r;colors[i*3+1]=c2.g;colors[i*3+2]=c2.b;}
     else if(isVenus){const swirl=_sn.noise3D(x*1.5,y*1.5,z*1.5)*0.4+_sn.noise3D(x*3,y*3,z*3)*0.2;const lat=Math.abs(v-0.5)*2;const isPolar=lat>0.75;let c;if(isPolar){c=new THREE.Color('#f8f0e0').lerp(new THREE.Color('#eee0c8'),Math.random());}else{c=new THREE.Color('#f0e0b8').lerp(new THREE.Color('#d8c898'),swirl*0.5+0.5);}if(Math.random()>0.97){c.addScalar(0.06);}c.multiplyScalar(0.85+Math.random()*0.2);colors[i*3]=c.r;colors[i*3+1]=c.g;colors[i*3+2]=c.b;}
@@ -688,7 +679,7 @@ function initThreeDetail(p,key){
   const rotGroup=new THREE.Group();tiltGroup.add(rotGroup);
   window._detailGroup=group;window._detailRotGroup=rotGroup;window._detailTiltGroup=tiltGroup;
   const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(positions,3));geo.setAttribute('color',new THREE.BufferAttribute(colors,3));
-  const isGasGiant=isJupiter||isSaturn||isUranus||isNeptune;const mat=new THREE.PointsMaterial({size:isGasGiant?0.12:0.08,vertexColors:true,transparent:true,opacity:isGasGiant?1.0:0.98,blending:isGasGiant?THREE.NormalBlending:THREE.AdditiveBlending,sizeAttenuation:true,depthWrite:false});
+  const isGasGiant=isJupiter||isSaturn||isUranus||isNeptune;const mat=new THREE.PointsMaterial({size:isGasGiant?0.12:0.08,vertexColors:true,transparent:true,opacity:isGasGiant?1.0:0.98,blending:isGasGiant?THREE.NormalBlending:THREE.AdditiveBlending,sizeAttenuation:true,depthWrite:true});
   rotGroup.add(new THREE.Points(geo,mat));
   const atmCount=3000;const ap=new Float32Array(atmCount*3);
   for(let i=0;i<atmCount;i++){const rd=radius+Math.random()*1.5;const t2=Math.random()*Math.PI*2;const p2=Math.acos(2*Math.random()-1);ap[i*3]=rd*Math.sin(p2)*Math.cos(t2);ap[i*3+1]=rd*Math.sin(p2)*Math.sin(t2);ap[i*3+2]=rd*Math.cos(p2);}
@@ -703,27 +694,30 @@ function initThreeDetail(p,key){
   // Earth LEO satellites
   if(isEarth){const ls=6;const leoGroup=new THREE.Group();const leoColors=[0xffffff,0xe06236,0x7da5c6,0xffcc00,0x88bbff,0xffffff];for(let i=0;i<ls;i++){const or=radius+1.2+Math.random()*1.0;const oGrp=new THREE.Group();oGrp.rotation.x=(Math.random()-0.5)*1.2;oGrp.rotation.z=(Math.random()-0.5)*1.2;leoGroup.add(oGrp);const pts=[];for(let j=0;j<=64;j++){const a=j/64*Math.PI*2;pts.push(new THREE.Vector3(Math.cos(a)*or,0,Math.sin(a)*or));}const oGeo=new THREE.BufferGeometry().setFromPoints(pts);const oLine=new THREE.Line(oGeo,new THREE.LineDashedMaterial({color:leoColors[i],transparent:true,opacity:0.35,dashSize:0.3,gapSize:0.25}));oLine.computeLineDistances();oGrp.add(oLine);const satG=new THREE.BufferGeometry();satG.setAttribute('position',new THREE.BufferAttribute(new Float32Array([0,0,0]),3));const satP=new THREE.Points(satG,new THREE.PointsMaterial({size:0.25,color:leoColors[i],transparent:true,opacity:0.95,blending:THREE.AdditiveBlending,sizeAttenuation:true}));satP.userData={orad:or,phase:Math.random()*Math.PI*2,speed:0.6+Math.random()*1.2};oGrp.add(satP);}rotGroup.add(leoGroup);group.userData.leoGroup=leoGroup;}
   // Jupiter Great Red Spot
-    const wg1=new THREE.WireframeGeometry(new THREE.SphereGeometry(radius*0.98,16,16));const wm1=new THREE.LineBasicMaterial({color:baseColor,transparent:true,opacity:0.03});rotGroup.add(new THREE.LineSegments(wg1,wm1));
-  const rCf={saturn:{rc:25000,rn:9.2,rr:4.4,yo:0.6,sz:0.06,op:0.45,rx:0.4},jupiter:{rc:4000,rn:10,rr:1.5,yo:0.2,co:0xd4c098,sz:0.05,op:0.22,rx:0.2},uranus:{rc:0,rn:0,rr:0,yo:0,co:0,sz:0,op:0,rx:1.7},neptune:{rc:0,rn:0,rr:0,yo:0,co:0,sz:0,op:0,rx:0.5}};
-  const cK=rCf[key];if(cK){const rp=new Float32Array(cK.rc*3);const rc2=cK.rc;const rcArr=new Float32Array(rc2*3);for(let i=0;i<rc2;i++){const a2=Math.random()*Math.PI*2;let rd=cK.rn+Math.random()*cK.rr;if(key==='saturn'&&rd>11.5&&rd<12.0)continue;const yOff=(Math.random()-0.5)*cK.yo;rp[i*3]=Math.cos(a2)*rd;rp[i*3+1]=yOff;rp[i*3+2]=Math.sin(a2)*rd;if(key==='saturn'){const ringInnerDark=new THREE.Color("#4a3b2a"),ringMainBright=new THREE.Color("#f0e4c0"),ringOuterIce=new THREE.Color("#a0b0c0");let rc;if(rd<11.6){let mix=(rd-9.2)/2.4;rc=ringMainBright.clone();rc.multiplyScalar(0.7+mix*0.4);}else{let mix=(rd-11.6)/2.0;rc=ringMainBright.clone().lerp(ringOuterIce,mix*0.5);rc.multiplyScalar(0.5+Math.random()*0.3);}rcArr[i*3]=rc.r;rcArr[i*3+1]=rc.g;rcArr[i*3+2]=rc.b;}else{rcArr[i*3]=1;rcArr[i*3+1]=1;rcArr[i*3+2]=1;}}const rg2=new THREE.BufferGeometry();rg2.setAttribute('position',new THREE.BufferAttribute(rp,3));if(key==='saturn'){rg2.setAttribute('color',new THREE.BufferAttribute(rcArr,3));const rm2=new THREE.PointsMaterial({size:cK.sz,vertexColors:true,transparent:true,opacity:cK.op,blending:THREE.AdditiveBlending,sizeAttenuation:true});const ringMesh=new THREE.Points(rg2,rm2);if(key==='saturn'){const ringAngles=new Float32Array(rc2);const ringRadii=new Float32Array(rc2);for(let i=0;i<rc2;i++){ringRadii[i]=Math.sqrt(rp[i*3]*rp[i*3]+rp[i*3+2]*rp[i*3+2]);ringAngles[i]=Math.atan2(rp[i*3+2],rp[i*3]);}ringMesh.userData={ringAngles,ringRadii,ringCount:rc2};}rotGroup.add(ringMesh);}else{rg2.setAttribute('color',new THREE.BufferAttribute(rcArr,3));const rm2=new THREE.PointsMaterial({size:cK.sz,vertexColors:true,transparent:true,opacity:cK.op,blending:THREE.AdditiveBlending,sizeAttenuation:true,color:cK.co});const ringMesh=new THREE.Points(rg2,rm2);rotGroup.add(ringMesh);}}
+  const rc=(bd&&bd.ringConfig)||null;
+  const cK=rc&&rc.mainParticles>0?rc:null;if(cK){const rp=new Float32Array(cK.mainParticles*3);const rc2=cK.mainParticles;const rcArr=new Float32Array(rc2*3);for(let i=0;i<rc2;i++){const a2=Math.random()*Math.PI*2;let rd=cK.innerRadius+Math.random()*cK.ringWidth;if(key==='saturn'&&rd>11.5&&rd<12.0){rp[i*3]=100;rp[i*3+1]=100;rp[i*3+2]=100;rcArr[i*3]=0;rcArr[i*3+1]=0;rcArr[i*3+2]=0;continue;}const yOff=(Math.random()-0.5)*cK.yOffset;rp[i*3]=Math.cos(a2)*rd;rp[i*3+1]=yOff;rp[i*3+2]=Math.sin(a2)*rd;if(key==='saturn'){const ringInnerDark=new THREE.Color("#4a3b2a"),ringMainBright=new THREE.Color("#f0e4c0"),ringOuterIce=new THREE.Color("#a0b0c0");let rc;if(rd<11.6){let mix=(rd-9.2)/2.4;rc=ringMainBright.clone();rc.multiplyScalar(0.7+mix*0.4);}else{let mix=(rd-11.6)/2.0;rc=ringMainBright.clone().lerp(ringOuterIce,mix*0.5);rc.multiplyScalar(0.5+Math.random()*0.3);}rcArr[i*3]=rc.r;rcArr[i*3+1]=rc.g;rcArr[i*3+2]=rc.b;}else{rcArr[i*3]=1;rcArr[i*3+1]=1;rcArr[i*3+2]=1;}}const rg2=new THREE.BufferGeometry();rg2.setAttribute('position',new THREE.BufferAttribute(rp,3));if(key==='saturn'){rg2.setAttribute('color',new THREE.BufferAttribute(rcArr,3));const rm2=new THREE.PointsMaterial({size:cK.particleSize,vertexColors:true,transparent:true,opacity:cK.opacity,blending:THREE.AdditiveBlending,sizeAttenuation:true});const ringMesh=new THREE.Points(rg2,rm2);if(key==='saturn'){const ringAngles=new Float32Array(rc2);const ringRadii=new Float32Array(rc2);for(let i=0;i<rc2;i++){ringRadii[i]=Math.sqrt(rp[i*3]*rp[i*3]+rp[i*3+2]*rp[i*3+2]);ringAngles[i]=Math.atan2(rp[i*3+2],rp[i*3]);}ringMesh.userData={ringAngles,ringRadii,ringCount:rc2};}rotGroup.add(ringMesh);}else{rg2.setAttribute('color',new THREE.BufferAttribute(rcArr,3));const rm2=new THREE.PointsMaterial({size:cK.particleSize,vertexColors:true,transparent:true,opacity:cK.opacity,blending:THREE.AdditiveBlending,sizeAttenuation:true,color:parseInt(cK.color.replace("#",""),16)});const ringMesh=new THREE.Points(rg2,rm2);rotGroup.add(ringMesh);}}
   // Uranus 13 narrow rings
   if(key==='uranus'){const uRings=[10.0,10.15,10.3,10.5,10.65,10.8,10.95,11.1,11.3,11.45,11.6,11.75,11.9];for(let ri=0;ri<uRings.length;ri++){const rr=uRings[ri];const rw=0.04+(ri%3)*0.02;const rc2u=200;const rp2=new Float32Array(rc2u*3);for(let i=0;i<rc2u;i++){const a=Math.random()*Math.PI*2;const rd=rr+(Math.random()-0.5)*rw*2;const yOff=(Math.random()-0.5)*0.08;rp2[i*3]=Math.cos(a)*rd;rp2[i*3+1]=yOff;rp2[i*3+2]=Math.sin(a)*rd;}const rg2u=new THREE.BufferGeometry();rg2u.setAttribute('position',new THREE.BufferAttribute(rp2,3));const rm2u=new THREE.PointsMaterial({size:0.03,color:(ri<6?0xccdddd:0xaaccbb),transparent:true,opacity:0.12+Math.random()*0.08,blending:THREE.AdditiveBlending,sizeAttenuation:true});rotGroup.add(new THREE.Points(rg2u,rm2u));}}
   // Neptune 5 arc rings
   if(key==='neptune'){const nRings=[10.2,10.6,11.0,11.5,12.2];for(let ri=0;ri<nRings.length;ri++){const rr=nRings[ri];const arcLen=0.4+ri*0.15;const arcOff=ri*1.3;const rc2n=180;const rp2=new Float32Array(rc2n*3);for(let i=0;i<rc2n;i++){const a=arcOff+(Math.random()-0.5)*arcLen;const rd=rr+(Math.random()-0.5)*0.06;const yOff=(Math.random()-0.5)*0.05;rp2[i*3]=Math.cos(a)*rd;rp2[i*3+1]=yOff;rp2[i*3+2]=Math.sin(a)*rd;}const rg2n=new THREE.BufferGeometry();rg2n.setAttribute('position',new THREE.BufferAttribute(rp2,3));const rm2n=new THREE.PointsMaterial({size:0.025,color:0x8899bb,transparent:true,opacity:0.1+ri*0.04,blending:THREE.AdditiveBlending,sizeAttenuation:true});rotGroup.add(new THREE.Points(rg2n,rm2n));}}
-  if(p.moons&&p.moons.length){const mg=new THREE.Group();rotGroup.add(mg);for(let mi=0;mi<p.moons.length;mi++){const m=p.moons[mi];const ringOuter=cK?cK.rn+cK.rr:0;const rawOr=radius+Math.pow(m.distRe,0.6)*2.2;const orad=cK?ringOuter+0.5+Math.pow(m.distRe,0.55)*2.0:Math.max(radius+2.5,rawOr);const op=96;const oGeo=new THREE.BufferGeometry().setFromPoints(new THREE.EllipseCurve(0,0,orad,orad,0,Math.PI*2).getPoints(op));const oMat=new THREE.LineDashedMaterial({color:(key==="saturn"&&m.name==="泰坦"?"#e06236":m.color),transparent:true,opacity:(key==="saturn"&&m.name==="泰坦"?0.5:0.28),dashSize:0.15,gapSize:0.2});const oLine=new THREE.Line(oGeo,oMat);oLine.computeLineDistances();oLine.rotation.x=Math.PI/2;mg.add(oLine);const mc=Math.floor(60+m.sizeRe*2000);const mp=new Float32Array(mc*3);for(let j=0;j<mc;j++){const t2=Math.random()*Math.PI*2;const p2=Math.acos(2*Math.random()-1);const pScale=Math.sqrt(p.radiusKm/ER);const r2=m.sizeRe*4/pScale;mp[j*3]=r2*Math.sin(p2)*Math.cos(t2);mp[j*3+1]=r2*Math.sin(p2)*Math.sin(t2);mp[j*3+2]=r2*Math.cos(p2);}const mg2=new THREE.BufferGeometry();mg2.setAttribute('position',new THREE.BufferAttribute(mp,3));const mm2=new THREE.PointsMaterial({color:m.color,size:Math.max(0.03,m.sizeRe*0.15),transparent:true,opacity:0.75,blending:THREE.AdditiveBlending,sizeAttenuation:true});const moonMesh=new THREE.Points(mg2,mm2);const ang=mi*2.1;moonMesh.position.x=Math.cos(ang)*orad;moonMesh.position.z=Math.sin(ang)*orad;mg.add(moonMesh);moonMesh.userData={orad,angle:ang,speed:(0.15+Math.random()*0.2)/Math.sqrt(m.distRe)};}}
+  if(p.moons&&p.moons.length){const mg=new THREE.Group();rotGroup.add(mg);for(let mi=0;mi<p.moons.length;mi++){const m=p.moons[mi];const ringOuter=cK?cK.innerRadius+cK.ringWidth:0;const rawOr=radius+Math.pow(m.distRe,0.6)*2.2;const orad=cK?ringOuter+0.5+Math.pow(m.distRe,0.55)*2.0:Math.max(radius+2.5,rawOr);const op=96;const oGeo=new THREE.BufferGeometry().setFromPoints(new THREE.EllipseCurve(0,0,orad,orad,0,Math.PI*2).getPoints(op));const oMat=new THREE.LineDashedMaterial({color:(key==="saturn"&&m.name==="泰坦"?"#e06236":m.color),transparent:true,opacity:(key==="saturn"&&m.name==="泰坦"?0.5:0.28),dashSize:0.15,gapSize:0.2});const oLine=new THREE.Line(oGeo,oMat);oLine.computeLineDistances();oLine.rotation.x=Math.PI/2;mg.add(oLine);const mc=Math.floor(60+m.sizeRe*2000);const mp=new Float32Array(mc*3);for(let j=0;j<mc;j++){const t2=Math.random()*Math.PI*2;const p2=Math.acos(2*Math.random()-1);const pScale=Math.sqrt(p.radiusKm/ER);const r2=m.sizeRe*4/pScale;mp[j*3]=r2*Math.sin(p2)*Math.cos(t2);mp[j*3+1]=r2*Math.sin(p2)*Math.sin(t2);mp[j*3+2]=r2*Math.cos(p2);}const mg2=new THREE.BufferGeometry();mg2.setAttribute('position',new THREE.BufferAttribute(mp,3));const mm2=new THREE.PointsMaterial({color:m.color,size:Math.max(0.03,m.sizeRe*0.15),transparent:true,opacity:0.75,blending:THREE.AdditiveBlending,sizeAttenuation:true});const moonMesh=new THREE.Points(mg2,mm2);const ang=mi*2.1;moonMesh.position.x=Math.cos(ang)*orad;moonMesh.position.z=Math.sin(ang)*orad;mg.add(moonMesh);moonMesh.userData={orad,angle:ang,speed:(0.15+Math.random()*0.2)/Math.sqrt(m.distRe)};}}
   let t=0,animId=null;const _onCM=e=>e.preventDefault();
+  const _onMM=e=>{hideTip();};
   canvas.addEventListener('contextmenu',_onCM);
-  window._detailEvCleanup=()=>{canvas.removeEventListener('contextmenu',_onCM);};
-  canvas.addEventListener('mousemove',e=>{hideTip();});
-  function animate(){animId=requestAnimationFrame(animate);t+=0.005;rotGroup.rotation.y+=0.001;
+  canvas.addEventListener('mousemove',_onMM);
+  window._detailEvCleanup=()=>{
+    canvas.removeEventListener('contextmenu',_onCM);
+    canvas.removeEventListener('mousemove',_onMM);
+  };
+  function animate(){animId=requestAnimationFrame(animate);t+=0.005;rotGroup.rotation.y=(rotGroup.rotation.y+0.001)%(Math.PI*2);
     if(p.moons&&p.moons.length){group.children.forEach(g=>{if(g.type==='Group')g.children.forEach(g2=>{if(g2.type==='Group')g2.children.forEach(g3=>{if(g3.type==='Group')g3.children.forEach(mesh=>{if(mesh.isPoints&&mesh.userData.angle!==undefined){mesh.userData.angle+=mesh.userData.speed*0.012;const md=mesh.userData;mesh.position.x=Math.cos(md.angle)*md.orad;mesh.position.z=Math.sin(md.angle)*md.orad;}});});});});}
     // Planet-specific animations
     if(isEarth&&rotGroup.userData.cloudMesh){rotGroup.userData.cloudMesh.rotation.y+=0.0015;}
     if(isEarth&&group.userData.leoGroup){group.userData.leoGroup.children.forEach(oGrp=>{if(oGrp.type==='Group')oGrp.children.forEach(mesh=>{if(mesh.isPoints&&mesh.userData.phase!==undefined){const d=mesh.userData;d.phase+=d.speed*0.008;mesh.position.x=Math.cos(d.phase)*d.orad;mesh.position.z=Math.sin(d.phase)*d.orad;mesh.position.y=0;}});});}
-    if(cK){rotGroup.children.forEach(child=>{if(child.isPoints&&child.userData.ringAngles){const rd=child.userData;const pos=child.geometry.attributes.position.array;for(let i=0;i<rd.ringCount;i++){const r=rd.ringRadii[i];const speed=0.015*Math.pow(r,-1.5);rd.ringAngles[i]+=speed;pos[i*3]=Math.cos(rd.ringAngles[i])*r;pos[i*3+2]=Math.sin(rd.ringAngles[i])*r;}child.geometry.attributes.position.needsUpdate=true;}else if(child.isPoints&&child.geometry.attributes.position.count>800&&child.material.opacity>0.05&&child.material.opacity<0.5){child.rotation.y+=0.0006;}});}
+    if(rc){rotGroup.children.forEach(child=>{if(child.isPoints&&child.userData.ringAngles){const rd=child.userData;const pos=child.geometry.attributes.position.array;for(let i=0;i<rd.ringCount;i++){const r=rd.ringRadii[i];const speed=0.015*Math.pow(r,-1.5);rd.ringAngles[i]+=speed;pos[i*3]=Math.cos(rd.ringAngles[i])*r;pos[i*3+2]=Math.sin(rd.ringAngles[i])*r;}child.geometry.attributes.position.needsUpdate=true;}else if(child.isPoints&&child.geometry.attributes.position.count>800&&child.material.opacity>0.05&&child.material.opacity<0.5){child.rotation.y+=0.0006;}});}
     renderer.render(scene,camera);}animate();
-  const ro=new ResizeObserver(()=>{const w=ov.clientWidth,h=ov.clientHeight;if(w>0&&h>0){camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);}});ro.observe(ov);
-  detailCleanup=()=>{if(window._detailEvCleanup){window._detailEvCleanup();window._detailEvCleanup=null;}if(animId)cancelAnimationFrame(animId);ro.disconnect();renderer.dispose();scene.traverse(obj=>{if(obj.geometry)obj.geometry.dispose();if(obj.material)obj.material.dispose();});while(group.children.length)group.remove(group.children[0]);};}// Initial UI setup for default compare mode
+  let _roTimer=null;const ro=new ResizeObserver(()=>{if(_roTimer)clearTimeout(_roTimer);_roTimer=setTimeout(()=>{const w=ov.clientWidth,h=ov.clientHeight;if(w>0&&h>0){camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);}},100);});ro.observe(ov);
+  detailCleanup=()=>{if(window._detailEvCleanup){window._detailEvCleanup();window._detailEvCleanup=null;}if(animId)cancelAnimationFrame(animId);ro.disconnect();renderer.clear(true,true,true);renderer.dispose();scene.traverse(obj=>{if(obj.geometry)obj.geometry.dispose();if(obj.material)obj.material.dispose();});while(group.children.length)group.remove(group.children[0]);};}// Initial UI setup for default compare mode
 document.getElementById('speed-group').style.display='none';
 document.getElementById('sep1').style.display='none';
 document.getElementById('tilt-group').style.display='none';
@@ -751,6 +745,10 @@ document.getElementById('view-note').innerHTML='点击天体查看详情 · 拖�
 // Page load intro
 requestAnimationFrame(()=>{cur.classList.remove('start-covered');cur.classList.add('curtain-intro');});
 view.start();
+// ESC key to close detail overlay
+window.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&overlay.style.display==='block')closeDetail();
+});
 </script>
 </body>
 </html>
